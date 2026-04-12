@@ -35,11 +35,11 @@ docker compose up -d
 
 ## Screenshots
 <p align="center">
-  <img src="screenshots/1.png" width="420" alt="Screenshot 1"><br><br>
-  <img src="screenshots/2.png" width="420" alt="Screenshot 2"><br><br>
-  <img src="screenshots/3.png" width="420" alt="Screenshot 3"><br><br>
-  <img src="screenshots/about.png" width="420" alt="About"><br><br>
-  <img src="screenshots/test.png" width="420" alt="Test">
+  <img src="screenshots/1.png" width="660" alt="Screenshot 1"><br><br>
+  <img src="screenshots/2.png" width="660" alt="Screenshot 2"><br><br>
+  <img src="screenshots/3.png" width="660" alt="Screenshot 3"><br><br>
+  <img src="screenshots/about.png" width="660" alt="About"><br><br>
+  <img src="screenshots/test.png" width="660" alt="Test">
 </p>
 
 ## Comparison
