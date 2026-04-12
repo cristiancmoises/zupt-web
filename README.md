@@ -72,6 +72,21 @@ docker compose up -d
 
 Open **http://localhost:8181**
 
+### Increase/Decrease 
+```bash
+# Example for decrease to 50MB
+# Edit app.py
+app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024   # 50 MB
+```
+```bash
+# Example for decrease to 50MB
+# Edit app.py                                   
+app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024   # 50 MB
+------------------------------------------------------------
+# Edit nginx.conf:                                   
+client_max_body_size 50M;
+```
+
 ### Docker DNS Fix
 
 If the build fails with `Temporary failure resolving 'archive.ubuntu.com'`:
@@ -125,6 +140,10 @@ ZUPT WEB — FULL TEST SUITE
 
 - [**zupt**](https://github.com/cristiancmoises/zupt) v2.1.5 — Cristian Cezar Moises
 - [**libzupt**](https://github.com/cabelo/libzupt) v1.0.2 — Alessandro de Oliveira Faria
+
+## Contact
+
+    zupt@securityops.co
 
 ## License
 
