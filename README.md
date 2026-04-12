@@ -8,7 +8,6 @@ One-command deploy. No accounts. No cloud. Your keys, your data, your server.
 docker compose up -d
 # → http://localhost:8181
 ```
-
 ---
 
 ## Features
@@ -33,6 +32,15 @@ docker compose up -d
 - **Path traversal protection** — filenames sanitized, paths verified with `.relative_to()`
 - **Keys auto-expire** from server after 4 hours
 - **Nginx hardened** — `server_tokens off`, `X-Frame-Options DENY`
+
+## Screenshots
+<p align="center">
+  <img src="screenshots/1.png" width="420" alt="Screenshot 1"><br><br>
+  <img src="screenshots/2.png" width="420" alt="Screenshot 2"><br><br>
+  <img src="screenshots/3.png" width="420" alt="Screenshot 3"><br><br>
+  <img src="screenshots/about.png" width="420" alt="About"><br><br>
+  <img src="screenshots/test.png" width="420" alt="Test">
+</p>
 
 ## Comparison
 
