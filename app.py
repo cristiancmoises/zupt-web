@@ -7,11 +7,11 @@ from pathlib import Path
 from functools import wraps
 from collections import defaultdict
 from flask import (Flask, request, jsonify, send_file, render_template,
-                   redirect, url_for, make_response, abort)
+                   redirect, url_for, make_response, abort, g)
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('ZUPT_SECRET_KEY', secrets.token_hex(32))
-app.config['MAX_CONTENT_LENGTH'] = 2000 * 1024 * 1024
+app.config['MAX_CONTENT_LENGTH'] = 34 * 1024 * 1024
 
 WORKDIR = Path(os.environ.get('ZUPT_WORKDIR', '/tmp/zupt-work'))
 WORKDIR.mkdir(parents=True, exist_ok=True)
@@ -36,23 +36,26 @@ def rate_limit(max_calls, period_sec):
     return decorator
 
 # ─── CSRF ───
-def validate_csrf(token):
-    expected = request.cookies.get('csrf_token')
-    if not expected or not token:
-        return False
-    return hmac.compare_digest(expected, token)
-
+# One token per request, shared between the view and after_request so the
+# hidden form field and the Set-Cookie header always carry the same value.
 @app.before_request
-def csrf_check():
+def csrf_prepare():
+    cookie = request.cookies.get('csrf_token')
+    g.csrf_token = cookie or secrets.token_hex(32)
+    g.csrf_new = cookie is None
+
     if request.method in ('POST', 'PUT', 'DELETE'):
-        token = request.form.get('csrf_token', '')
-        if not validate_csrf(token):
+        # A mutating request with no cookie yet cannot possibly be authentic.
+        if not cookie:
+            abort(403)
+        submitted = request.form.get('csrf_token', '')
+        if not submitted or not hmac.compare_digest(cookie, submitted):
             abort(403)
 
 @app.after_request
 def headers(response):
-    if 'csrf_token' not in request.cookies:
-        response.set_cookie('csrf_token', secrets.token_hex(32),
+    if getattr(g, 'csrf_new', False):
+        response.set_cookie('csrf_token', g.csrf_token,
                             httponly=True, samesite='Strict', max_age=3600)
     response.headers['X-Content-Type-Options'] = 'nosniff'
     response.headers['X-Frame-Options'] = 'DENY'
@@ -94,8 +97,7 @@ def index():
     cleanup_old_jobs()
     code, out, _ = run_zupt(['version'], timeout=5)
     version = out.strip().split('\n')[0] if code == 0 else 'zupt (offline)'
-    csrf = request.cookies.get('csrf_token', secrets.token_hex(32))
-    return render_template('index.html', version=version, csrf_token=csrf)
+    return render_template('index.html', version=version, csrf_token=g.csrf_token)
 
 @app.route('/keygen', methods=['POST'])
 @rate_limit(10, 60)
@@ -113,8 +115,7 @@ def keygen():
     if code2 != 0:
         return render_template('result.html', success=False, message=f'Public key export failed: {err2}')
 
-    csrf = request.cookies.get('csrf_token', secrets.token_hex(32))
-    return render_template('keygen_result.html', job_id=job_id, log=err + err2, csrf_token=csrf)
+    return render_template('keygen_result.html', job_id=job_id, log=err + err2, csrf_token=g.csrf_token)
 
 @app.route('/download-key/<job_id>/<key_type>', methods=['GET'])
 def download_key(job_id, key_type):
