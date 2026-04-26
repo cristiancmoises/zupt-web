@@ -1,20 +1,20 @@
 ================================================================================
-ZUPT-WEB — Browser-Based Frontend for Post-Quantum Backup Operations
+ZUPT — POST-QUANTUM AUTHENTICATED BACKUP COMPRESSION UTILITY
 
   Copyright (C) 2026  Cristian Cezar Moisés
   Contact for commercial licensing: sac@securityops.co
 
 ================================================================================
 
-Zupt-Web is free software: you can redistribute it and/or modify it under
-the terms of the GNU Affero General Public License as published by the Free
+Zupt is free software: you can redistribute it and/or modify it under the
+terms of the GNU Affero General Public License as published by the Free
 Software Foundation, either version 3 of the License, or (at your option)
 any later version.
 
-Zupt-Web is distributed in the hope that it will be useful, but WITHOUT
-ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
-FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Affero General Public
-License for more details.
+Zupt is distributed in the hope that it will be useful, but WITHOUT ANY
+WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+FOR A PARTICULAR PURPOSE.  See the GNU Affero General Public License for
+more details.
 
 You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
@@ -26,24 +26,27 @@ WHY AGPL-3.0
 This software is licensed under the GNU Affero General Public License v3.0
 (AGPL-3.0-or-later) for one reason: to keep it free for everyone.
 
-Zupt-Web is a network-facing application: it runs as a backend service
-that processes user uploads and serves back the results. The AGPL is
-specifically chosen — over the GPL or MIT — because Zupt-Web is the
-exact deployment shape that the AGPL exists to address.
+The author has invested years of personal effort developing post-quantum
+hybrid encryption (ML-KEM-768 + X25519), formally verified constant-time
+assembly (Jasmin), authenticated encryption (AES-256-CTR + HMAC-SHA256),
+and a custom high-performance compression codec (VaptVupt). The intent is
+that this work benefits users, researchers, students, and the wider free
+software community — NOT that it be quietly absorbed into proprietary,
+closed-source, or hosted commercial products without giving anything back.
 
-Any organization that runs a modified version of Zupt-Web as a network
-service (for example, as a hosted backup-as-a-service product, a cloud
-archival portal, an internal-tools backend exposed to non-employees, or
-any other commercial offering accessed over a network) MUST make the
-corresponding source code of their modified version available to the
-users of that service.
+The AGPL is specifically chosen (over the GPL or MIT) because it closes
+the "Software-as-a-Service loophole": any organization that runs a
+modified version of Zupt as a network service (for example, as a
+backend for a backup-as-a-service product, a cloud archival service,
+or any other commercial offering accessed over a network) MUST make
+the corresponding source code of their modified version available to
+the users of that service.
 
 If you are an individual, a non-profit, a researcher, a student, a
-sysadmin, a homelab operator, or any business that simply RUNS Zupt-Web
-internally for your own use (without redistributing modifications and
-without operating it as a network service for third parties), the AGPL
-imposes essentially no obligations on you. Spin up the Docker stack.
-Encrypt your archives. You're fine.
+sysadmin, or any business that simply USES Zupt (without redistributing
+modifications and without operating it as a network service for third
+parties), the AGPL imposes essentially no obligations on you. Use it
+freely. Back up your data. Encrypt your archives.
 
 --------------------------------------------------------------------------------
 COMMERCIAL LICENSING
@@ -51,12 +54,12 @@ COMMERCIAL LICENSING
 
 If your intended use is incompatible with the AGPL — for example:
 
-  * You wish to incorporate Zupt-Web into a closed-source product,
-    appliance, SaaS portal, or hosted backup-as-a-service offering.
-  * You wish to operate a modified Zupt-Web as a hosted service without
-    releasing your modifications to your end users.
-  * You wish to redistribute Zupt-Web as part of a proprietary
-    commercial product without the AGPL's source-disclosure obligations.
+  * You wish to incorporate Zupt or VaptVupt into a closed-source
+    product, appliance, or firmware.
+  * You wish to operate Zupt as a hosted/SaaS backend without releasing
+    your modifications to your end users.
+  * You wish to redistribute Zupt as part of a proprietary commercial
+    product without the AGPL's source-disclosure obligations.
   * You require a warranty, indemnification, or written terms that the
     AGPL does not provide.
 
@@ -66,22 +69,32 @@ A commercial license is available. Please contact:
 
 Commercial licensing terms, pricing, and the scope of the granted rights
 are negotiated case-by-case. The author retains full copyright ownership
-of all original Zupt-Web source code and is therefore able to grant
-alternative licensing terms.
+of all original Zupt source code (including the integrated VaptVupt
+codec) and is therefore able to grant alternative licensing terms.
 
 --------------------------------------------------------------------------------
-BUNDLED COMPONENTS
+THIRD-PARTY COMPONENTS
 --------------------------------------------------------------------------------
 
-The `zupt-2.1.7/` subdirectory contains the Zupt CLI source tree and
-is itself licensed under AGPL-3.0-or-later (with the integrated
-VaptVupt compression codec licensed under GPL-3.0-or-later, which is
-two-way compatible with AGPL-3.0-or-later via section 13 of both
-licenses).
+The integrated VaptVupt compression codec (src/vv_*.c, include/vaptvupt*.h,
+include/vv_*.h) is distributed under GPL-3.0-or-later — separate from
+Zupt's AGPL-3.0 — because VaptVupt has independent reuse value as a
+standalone compression codec. GPL-3.0-or-later is two-way compatible
+with AGPL-3.0-or-later via the explicit AGPL/GPL combination provision
+in section 13 of the AGPL.
 
-See:
-  * zupt-2.1.7/LICENSE           — AGPL-3.0-or-later notice
-  * zupt-2.1.7/LICENSE-VAPTVUPT  — GPL-3.0-or-later notice for the codec
+The canonical upstream of VaptVupt is github.com/cristiancmoises/vaptvupt.
+The version embedded in Zupt is kept in sync with that upstream; the
+internal API and on-disk frame format are byte-compatible.
+
+The XXH64 checksum implementation in src/zupt_xxh.c and src/vv_xxh64.c
+is derived from xxHash by Yann Collet (BSD-2-Clause, public domain
+fallback). This is permissively licensed and compatible with both
+AGPL-3.0 and GPL-3.0.
+
+The Jasmin formally-verified assembly files in jasmin/*.s are generated
+by jasminc from .jazz sources written by the author and are covered by
+the same AGPL-3.0-or-later license as the rest of Zupt.
 
 ================================================================================
                 THE FULL TEXT OF THE GNU AFFERO GENERAL PUBLIC

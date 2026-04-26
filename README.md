@@ -19,7 +19,7 @@ docker compose up -d
 | **Extract & Decrypt** | Upload `.zupt` archive + key/password → original files returned |
 | **Integrity Verify** | Validate every block's XXH64 checksum without extracting |
 | **Codec Selection** | AUTO (hardware-adaptive), VaptVupt (AVX2/NEON), LZHP, Store |
-| **Block Dedup** | v2.1.5: eliminates duplicate blocks before compression |
+| **Block Dedup** | Eliminates duplicate blocks before compression (since zupt v2.1.5) |
 | **Levels 1–9** | Fastest to maximum compression ratio |
 
 ## Security
@@ -108,7 +108,7 @@ sudo systemctl restart docker
 
 ```bash
 docker ps                    # Should show zupt-web-zupt (healthy)
-curl localhost:8181/version  # {"version": "zupt 2.1.5 ...", "ok": true}
+curl localhost:8181/version  # {"version": "zupt 2.1.7 ...", "ok": true}
 ```
 
 ### Stop
@@ -146,7 +146,7 @@ ZUPT WEB — FULL TEST SUITE
 
 ## Credits
 
-- [**zupt**](https://github.com/cristiancmoises/zupt) v2.1.5 — Cristian Cezar Moises
+- [**zupt**](https://github.com/cristiancmoises/zupt) v2.1.7 — Cristian Cezar Moises (AGPL-3.0-or-later)
 - [**libzupt**](https://github.com/cabelo/libzupt) v1.0.2 — Alessandro de Oliveira Faria
 
 ## Contact
@@ -155,4 +155,25 @@ ZUPT WEB — FULL TEST SUITE
 
 ## License
 
-MIT
+**Zupt-Web is licensed under the GNU Affero General Public License v3.0 or later (AGPL-3.0-or-later).**
+
+The full license text is in [LICENSE](LICENSE), preceded by a formal preamble explaining the rationale.
+
+- **You can run Zupt-Web freely** — for personal use, internal company use, homelab self-hosting, research, or as a tool in your sysadmin workflow. The AGPL imposes essentially no obligations on simple use.
+- **If you operate a modified Zupt-Web as a hosted/SaaS service** (a backup-management portal, a cloud archive viewer, a backup-as-a-service frontend, etc.), you MUST make the source code of your modifications available to the users of that service. This is the AGPL's "SaaS clause" and is the entire reason Zupt-Web is AGPL rather than GPL or MIT — Zupt-Web is by design a network-facing application, the exact deployment shape the AGPL exists to address.
+- **If you redistribute Zupt-Web** (modified or not), the AGPL travels with it.
+
+The bundled `zupt-2.1.7/` subdirectory contains the Zupt CLI source tree, also licensed under AGPL-3.0-or-later. The integrated VaptVupt compression codec inside the bundled zupt is licensed under GPL-3.0-or-later (kept in sync with [github.com/cristiancmoises/vaptvupt](https://github.com/cristiancmoises/vaptvupt)). GPL-3.0-or-later is two-way compatible with AGPL-3.0-or-later via section 13 of both licenses.
+
+### Commercial Licensing
+
+If your intended use is incompatible with the AGPL — for example:
+
+- Operating Zupt-Web as a hosted backup-as-a-service product without releasing your modifications
+- Embedding Zupt-Web into a closed-source commercial portal or appliance
+- Redistributing Zupt-Web as part of a proprietary product
+- Requiring warranty, indemnification, or written terms
+
+**A commercial license is available.** Contact: **sac@securityops.co**
+
+The author retains full copyright ownership of all original Zupt-Web source code and is therefore able to grant alternative licensing terms.

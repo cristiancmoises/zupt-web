@@ -1,6 +1,14 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Cristian Cezar Moisés
+# Commercial licensing: sac@securityops.co
 """
 Zupt Web — Hardened REST backend for post-quantum backup operations.
+
+Licensed under the GNU Affero General Public License v3.0 or later.
+If you operate a modified version of this software as a network service,
+the AGPL requires you to make your modifications available to your users.
+For commercial licensing inquiries, contact: sac@securityops.co
 """
 import subprocess, os, sys, uuid, shutil, time, hmac, secrets
 from pathlib import Path

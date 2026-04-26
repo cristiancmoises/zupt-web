@@ -1,4 +1,7 @@
 #!/bin/bash
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Cristian Cezar Moisés
+# Commercial licensing: sac@securityops.co
 set -e
 
 echo "══════════════════════════════════════════════"

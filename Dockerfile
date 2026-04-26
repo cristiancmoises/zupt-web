@@ -1,15 +1,21 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Cristian Cezar Moisés
+# Commercial licensing: sac@securityops.co
 FROM ubuntu:24.04 AS builder
 RUN apt-get update && \
     apt-get install -y --no-install-recommends gcc make libc6-dev && \
     rm -rf /var/lib/apt/lists/*
 WORKDIR /build
-COPY zupt-2.1.5/ .
+COPY zupt-2.1.7/ .
 RUN make clean && make && strip zupt
 
 FROM ubuntu:24.04
 LABEL maintainer="Cristian Cezar Moises"
 LABEL description="Zupt Web — Post-Quantum Backup Utility"
-LABEL version="2.1.5"
+LABEL version="2.1.7"
+LABEL org.opencontainers.image.licenses="AGPL-3.0-or-later"
+LABEL org.opencontainers.image.source="https://github.com/cristiancmoises/zupt-web"
+LABEL org.opencontainers.image.commercial="sac@securityops.co"
 
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
