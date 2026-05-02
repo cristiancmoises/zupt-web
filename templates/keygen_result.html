@@ -28,7 +28,7 @@ h1 svg{color:#0e8}
 <body>
 <div class="box">
   <h1><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg>Keypair Generated</h1>
-  <p class="sub">Your ML-KEM-768 + X25519 hybrid keypair is ready.</p>
+  <p class="sub">{% if key_kind == 'sdk' %}SDK v2 keypair (HKDF-SHA3-256 + key commitment + HPKE binding + Argon2id) ready. Use with <code>--pq-sdk</code>.{% else %}Legacy ML-KEM-768 + X25519 hybrid keypair ready. Use with <code>--pq</code>.{% endif %}</p>
   <div class="key-row"><div><b>&#128274; Private Key</b><span>zupt_private.key</span></div><a href="/download-key/{{ job_id }}/private" class="dl"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>Download</a></div>
   <div class="key-row"><div><b>&#128275; Public Key</b><span>zupt_public.key</span></div><a href="/download-key/{{ job_id }}/public" class="dl"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>Download</a></div>
   <div class="warn"><b>&#9888;</b> The private key decrypts your archives — store it safely, never share it. Keys auto-expire from the server after 4 hours.</div>

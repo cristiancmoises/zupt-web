@@ -1,0 +1,122 @@
+/* Zupt — AES-256 Single Block Encrypt via AES-NI (Jasmin)
+ * Copyright (c) 2026 Cristian Cezar Moisés
+ * SPDX-License-Identifier: AGPL-3.0-or-later
+ *
+ * CT-REQUIRED: AES-NI has no data-dependent timing.
+ *
+ * FIX v2.0.0: replaced `stack u128[15] rk` with 15 individual
+ * `stack u128` variables. The array form uses byte-offset indexing
+ * in jasminc (rk.[1] → [rsp+1] instead of [rsp+16]), producing
+ * incorrect round key loads. Individual variables avoid the issue.
+ */
+
+inline fn key_expand_even(reg u128 t0, reg u128 assist) -> reg u128 {
+    reg u128 tmp;
+    assist = #VPSHUFD(assist, 0xFF);
+    tmp = #VPSLLDQ(t0, 4);
+    t0 ^= tmp;
+    tmp = #VPSLLDQ(t0, 4);
+    t0 ^= tmp;
+    tmp = #VPSLLDQ(t0, 4);
+    t0 ^= tmp;
+    t0 ^= assist;
+    return t0;
+}
+
+inline fn key_expand_odd(reg u128 t0, reg u128 t1) -> reg u128 {
+    reg u128 tmp assist;
+    assist = #VAESKEYGENASSIST(t0, 0);
+    assist = #VPSHUFD(assist, 0xAA);
+    tmp = #VPSLLDQ(t1, 4);
+    t1 ^= tmp;
+    tmp = #VPSLLDQ(t1, 4);
+    t1 ^= tmp;
+    tmp = #VPSLLDQ(t1, 4);
+    t1 ^= tmp;
+    t1 ^= assist;
+    return t1;
+}
+
+export fn zupt_aes256_blk(
+    reg u64 out_ptr,
+    reg ptr u128[1] in_blk,
+    reg ptr u128[2] key,
+    reg ptr u128[1] ctr_blk)
+{
+    stack u128 rk0 rk1 rk2 rk3 rk4 rk5 rk6 rk7;
+    stack u128 rk8 rk9 rk10 rk11 rk12 rk13 rk14;
+    reg u128 t0 t1 assist b data;
+
+    t0 = key.[0];
+    t1 = key.[1];
+    rk0 = t0;
+    rk1 = t1;
+
+    assist = #VAESKEYGENASSIST(t1, 0x01);
+    t0 = key_expand_even(t0, assist);
+    rk2 = t0;
+    t1 = key_expand_odd(t0, t1);
+    rk3 = t1;
+
+    assist = #VAESKEYGENASSIST(t1, 0x02);
+    t0 = key_expand_even(t0, assist);
+    rk4 = t0;
+    t1 = key_expand_odd(t0, t1);
+    rk5 = t1;
+
+    assist = #VAESKEYGENASSIST(t1, 0x04);
+    t0 = key_expand_even(t0, assist);
+    rk6 = t0;
+    t1 = key_expand_odd(t0, t1);
+    rk7 = t1;
+
+    assist = #VAESKEYGENASSIST(t1, 0x08);
+    t0 = key_expand_even(t0, assist);
+    rk8 = t0;
+    t1 = key_expand_odd(t0, t1);
+    rk9 = t1;
+
+    assist = #VAESKEYGENASSIST(t1, 0x10);
+    t0 = key_expand_even(t0, assist);
+    rk10 = t0;
+    t1 = key_expand_odd(t0, t1);
+    rk11 = t1;
+
+    assist = #VAESKEYGENASSIST(t1, 0x20);
+    t0 = key_expand_even(t0, assist);
+    rk12 = t0;
+    t1 = key_expand_odd(t0, t1);
+    rk13 = t1;
+
+    assist = #VAESKEYGENASSIST(t1, 0x40);
+    t0 = key_expand_even(t0, assist);
+    rk14 = t0;
+
+    b = ctr_blk.[0];
+    b ^= rk0;
+    b = #VAESENC(b, rk1);
+    b = #VAESENC(b, rk2);
+    b = #VAESENC(b, rk3);
+    b = #VAESENC(b, rk4);
+    b = #VAESENC(b, rk5);
+    b = #VAESENC(b, rk6);
+    b = #VAESENC(b, rk7);
+    b = #VAESENC(b, rk8);
+    b = #VAESENC(b, rk9);
+    b = #VAESENC(b, rk10);
+    b = #VAESENC(b, rk11);
+    b = #VAESENC(b, rk12);
+    b = #VAESENC(b, rk13);
+    b = #VAESENCLAST(b, rk14);
+
+    data = in_blk.[0];
+    b ^= data;
+    [out_ptr + 0] = b;
+
+    reg u128 wipe;
+    wipe = rk0; wipe ^= wipe;
+    rk0 = wipe; rk1 = wipe; rk2 = wipe; rk3 = wipe;
+    rk4 = wipe; rk5 = wipe; rk6 = wipe; rk7 = wipe;
+    rk8 = wipe; rk9 = wipe; rk10 = wipe; rk11 = wipe;
+    rk12 = wipe; rk13 = wipe; rk14 = wipe;
+}

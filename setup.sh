@@ -2,91 +2,94 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 # Copyright (C) 2026 Cristian Cezar Moisés
 # Commercial licensing: sac@securityops.co
+#
+# zupt-web setup helper. Idempotent — safe to re-run.
 set -e
 
-echo "══════════════════════════════════════════════"
-echo "  Zupt Web — Setup & Deploy"
-echo "══════════════════════════════════════════════"
+PORT_HOST="${PORT_HOST:-8181}"
+
+cat <<'BANNER'
+══════════════════════════════════════════════
+  zupt-web 2.2.3 — setup & deploy
+══════════════════════════════════════════════
+BANNER
 echo ""
 
-# ─── Step 1: Fix Docker DNS (the root cause of build failures) ───
+# ─── Step 1: Docker DNS sanity ───
 echo "[1/4] Checking Docker DNS..."
+if ! docker run --rm ubuntu:24.04 sh -c "apt-get update >/dev/null 2>&1" 2>/dev/null; then
+    echo "  Docker can't resolve DNS during builds. Fixing..."
 
-# Test if Docker can resolve DNS during builds
-if ! docker run --rm ubuntu:24.04 sh -c "apt-get update > /dev/null 2>&1" 2>/dev/null; then
-    echo "  Docker DNS is broken. Fixing..."
-
-    # Create or update daemon.json with DNS servers
     DAEMON_JSON="/etc/docker/daemon.json"
     if [ -f "$DAEMON_JSON" ]; then
-        # Backup existing config
         sudo cp "$DAEMON_JSON" "${DAEMON_JSON}.bak"
-        # Add DNS if not present (merge with existing config)
         if ! grep -q '"dns"' "$DAEMON_JSON"; then
-            # Insert dns before the last closing brace
-            sudo python3 -c "
-import json
-with open('$DAEMON_JSON') as f:
-    cfg = json.load(f)
-cfg['dns'] = ['8.8.8.8', '1.1.1.1']
-with open('$DAEMON_JSON', 'w') as f:
-    json.dump(cfg, f, indent=2)
-print('  Updated $DAEMON_JSON')
-"
+            sudo python3 - <<EOF
+import json, pathlib
+p = pathlib.Path("$DAEMON_JSON")
+cfg = json.loads(p.read_text() or "{}")
+cfg.setdefault("dns", ["9.9.9.9", "1.1.1.1"])
+p.write_text(json.dumps(cfg, indent=2) + "\n")
+print(f"  Updated {p}")
+EOF
         fi
     else
-        echo '{ "dns": ["8.8.8.8", "1.1.1.1"] }' | sudo tee "$DAEMON_JSON" > /dev/null
+        echo '{ "dns": ["9.9.9.9", "1.1.1.1"] }' | sudo tee "$DAEMON_JSON" >/dev/null
         echo "  Created $DAEMON_JSON"
     fi
 
     sudo systemctl restart docker
-    echo "  Docker restarted. Waiting 3s..."
     sleep 3
 
-    # Verify fix
-    if docker run --rm ubuntu:24.04 sh -c "apt-get update > /dev/null 2>&1"; then
-        echo "  ✓ Docker DNS fixed!"
+    if docker run --rm ubuntu:24.04 sh -c "apt-get update >/dev/null 2>&1"; then
+        echo "  ✓ Docker DNS fixed"
     else
-        echo "  ✗ DNS still failing. Trying build with --network=host..."
-        echo "  Run: docker build --network=host ."
+        echo "  ⚠ DNS still failing — falling back to host network for build"
     fi
 else
     echo "  ✓ Docker DNS works"
 fi
-
 echo ""
 
 # ─── Step 2: Build ───
-echo "[2/4] Building Zupt Web..."
-# Try normal build first, fall back to --network=host
+echo "[2/4] Building zupt-web (this builds the bundled zupt-2.2.3 from source)..."
 if ! docker compose build 2>/dev/null; then
-    echo "  Normal build failed, trying with host network..."
-    docker build --network=host -t zupt-web .
+    echo "  Compose build failed — retrying with --network=host..."
+    docker build --network=host -t zupt-web:2.2.3 .
 fi
-
 echo ""
 
 # ─── Step 3: Run ───
 echo "[3/4] Starting container..."
 docker compose up -d
-
 echo ""
 
 # ─── Step 4: Verify ───
 echo "[4/4] Verifying..."
-sleep 2
+# Poll up to 20s for the container to come healthy.
+ok=0
+for i in $(seq 1 20); do
+    if curl -sf "http://localhost:${PORT_HOST}/healthz" >/dev/null 2>&1; then
+        ok=1
+        break
+    fi
+    sleep 1
+done
 
-if curl -sf http://localhost:8080/version > /dev/null 2>&1; then
-    echo "  ✓ Zupt Web is running!"
+if [ "$ok" -eq 1 ]; then
+    echo "  ✓ zupt-web is up — /healthz returns 200"
     echo ""
-    echo "══════════════════════════════════════════════"
-    echo "  Open: http://localhost:8080"
-    echo "══════════════════════════════════════════════"
+    cat <<EOF
+══════════════════════════════════════════════
+  Open: http://localhost:${PORT_HOST}
+  CLI version inside container:
+EOF
+    docker exec -t zupt-web /usr/local/bin/zupt --version 2>/dev/null | head -3 | sed 's/^/    /'
+    cat <<EOF
+══════════════════════════════════════════════
+EOF
 else
-    echo "  Container starting... check in a few seconds:"
-    echo "  curl http://localhost:8080/version"
-    echo ""
-    echo "  Logs: docker compose logs -f"
+    echo "  ⚠ /healthz did not respond within 20s — check logs:"
+    echo "     docker compose logs --tail=50 zupt"
 fi
-
 echo ""

@@ -1,0 +1,90 @@
+                    GNU AFFERO GENERAL PUBLIC LICENSE
+                       Version 3, 19 November 2007
+
+ Copyright (C) 2026 Cristian Cezar Moisés <zupt@riseup.net>
+
+ Zupt is free software: you can redistribute it and/or modify
+ it under the terms of the GNU Affero General Public License as
+ published by the Free Software Foundation, either version 3 of the
+ License, or (at your option) any later version.
+
+ Zupt is distributed in the hope that it will be useful, but
+ WITHOUT ANY WARRANTY; without even the implied warranty of
+ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ Affero General Public License for more details.
+
+ You should have received a copy of the GNU Affero General Public
+ License along with this program.  If not, see:
+
+     https://www.gnu.org/licenses/agpl-3.0.txt
+     https://www.gnu.org/licenses/agpl-3.0.html
+
+ SPDX-License-Identifier: AGPL-3.0-or-later
+
+ ─────────────────────────────────────────────────────────────────────
+
+ ABOUT THIS LICENSE
+
+ The GNU Affero General Public License v3 (AGPLv3) is a copyleft
+ license designed for software that may be run as a network service.
+ It is identical to the GNU General Public License v3, with one
+ additional requirement (Section 13): if you modify libzuptsdk and
+ make the modified version available to users over a computer network,
+ you must offer those users access to the corresponding modified
+ source code.
+
+ This protects Zupt against being adopted by SaaS providers as
+ a private fork without contributing back, while keeping it freely
+ usable by individuals, small businesses, and the broader open-source
+ community.
+
+ If you write a separate program that is distributed alongside
+ Zupt (for example, statically linking it into your own
+ application), the AGPL requires you to license that combined work
+ under the AGPL as well — which means you must publish the source.
+ If this is not acceptable for your use case, please contact the
+ author for commercial licensing options:
+
+     sac@securityops.co
+     https://git.securityops.co/cristiancmoises/zupt
+
+ ─────────────────────────────────────────────────────────────────────
+
+ The full text of the GNU Affero General Public License version 3
+ should accompany this distribution as a separate file (or you may
+ download it from the URLs above). It is approximately 35 KB / 619
+ lines of plain text.
+
+ ─────────────────────────────────────────────────────────────────────
+
+ NOTE ON VAPTVUPT (GPL, NOT AGPL)
+
+ The VaptVupt LZ + tANS codec, located in:
+
+     src/vv_*.c
+     src/vaptvupt_api.c
+     include/vaptvupt*.h
+     include/vv_*.h
+
+ is licensed under the GNU General Public License version 3 or later
+ (GPL-3.0-or-later), NOT the AGPL. This deliberate licensing choice is
+ made so that, with sufficient maturity, VaptVupt can be considered
+ for upstreaming into the Linux or BSD kernels (which require GPL-
+ compatible licensing).
+
+ The standalone repository for VaptVupt is at:
+
+     https://git.securityops.co/cristiancmoises/vaptvupt
+
+ The combination of GPL-licensed VaptVupt with AGPL-licensed Zupt is
+ explicitly intended by the author and consistent with the rights
+ retained by sole-authorship.
+
+ ─────────────────────────────────────────────────────────────────────
+
+ COMMERCIAL LICENSING
+
+ Both AGPL and GPL components may be commercially relicensed by the
+ author. If you require relief from copyleft terms, contact:
+
+     sac@securityops.co

@@ -279,11 +279,17 @@ select option { background: var(--card) }
   <div class="card highlight">
     <h2><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg>Post-Quantum Key Generation</h2>
     <p class="desc">Generate ML-KEM-768 + X25519 hybrid keypair for quantum-resistant encryption.</p>
-    <div class="info-box">Creates a <b>private key</b> (keep secret — decrypts archives) and a <b>public key</b> (share freely — encrypts archives). Based on <b>FIPS 203</b> and <b>RFC 7748</b> — safe against both classical and quantum computers.</div>
-    <form method="POST" action="/keygen" enctype="multipart/form-data">
-      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-      <button type="submit" class="btn btn-cyan"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg>Generate Keypair</button>
-    </form>
+    <div class="info-box"><b>SDK v2 (recommended for new archives):</b> HKDF-SHA3-256 combiner + key commitment + HPKE binding + Argon2id. Use with <code>--pq-sdk</code>.<br><br><b>Legacy:</b> XOR + SHA3-512 combiner. Compatible with archives created by Zupt 2.0–2.1. Use with <code>--pq</code>. Both produce a <b>private key</b> (keep secret — decrypts archives) and a <b>public key</b> (share freely — encrypts archives). Based on <b>FIPS 203</b> and <b>RFC 7748</b> — safe against both classical and quantum computers.</div>
+    <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:8px">
+      <form method="POST" action="/keygen-sdk" enctype="multipart/form-data" style="margin:0">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <button type="submit" class="btn btn-cyan"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg>Generate SDK v2 Keypair</button>
+      </form>
+      <form method="POST" action="/keygen" enctype="multipart/form-data" style="margin:0">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <button type="submit" class="btn"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg>Generate Legacy Keypair</button>
+      </form>
+    </div>
   </div>
 </section>
 
@@ -308,25 +314,29 @@ select option { background: var(--card) }
         <div class="field"><span class="label">Codec</span>
           <select name="codec">
             <option value="auto">AUTO (hardware detect)</option>
-            <option value="vaptvupt">VaptVupt (AVX2 / NEON)</option>
+            <option value="vaptvupt">VaptVupt 2.48.2 (AVX2 / NEON)</option>
             <option value="lzhp">Zupt-LZHP (universal)</option>
             <option value="store">Store (no compression)</option>
           </select>
         </div>
         <div class="field"><span class="label">Level (1–9)</span>
-          <input type="number" name="level" value="7" min="1" max="9">
+          <input type="number" name="level" value="5" min="1" max="9">
         </div>
-        <div class="field" style="display:flex;align-items:flex-end;padding-bottom:20px">
+        <div class="field" style="display:flex;flex-direction:column;justify-content:flex-end;padding-bottom:14px;gap:6px">
           <label class="checkbox"><input type="checkbox" name="solid"> Solid mode</label>
+          <label class="checkbox"><input type="checkbox" name="dedup"> Block dedup</label>
         </div>
       </div>
       <div class="grid2">
         <div class="field"><span class="label">Password (optional)</span>
           <input type="password" name="password" placeholder="AES-256-CTR + PBKDF2 600K iter">
         </div>
-        <div class="field key-input"><span class="label">PQ Public Key (optional)</span>
+        <div class="field key-input"><span class="label">PQ Public Key — legacy <code>--pq</code></span>
           <input type="file" name="pq_key">
         </div>
+      </div>
+      <div class="field key-input"><span class="label">PQ Public Key — SDK v2 <code>--pq-sdk</code> (recommended for new archives)</span>
+        <input type="file" name="pq_sdk_key">
       </div>
       <button type="submit" class="btn btn-cyan"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>Compress &amp; Download</button>
     </form>
@@ -354,9 +364,12 @@ select option { background: var(--card) }
         <div class="field"><span class="label">Password (if encrypted)</span>
           <input type="password" name="password" placeholder="Decryption password">
         </div>
-        <div class="field key-input"><span class="label">PQ Private Key (if PQ encrypted)</span>
+        <div class="field key-input"><span class="label">PQ Private Key — legacy <code>--pq</code></span>
           <input type="file" name="pq_key">
         </div>
+      </div>
+      <div class="field key-input"><span class="label">PQ Private Key — SDK v2 <code>--pq-sdk</code></span>
+        <input type="file" name="pq_sdk_key">
       </div>
       <button type="submit" class="btn btn-green"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>Extract &amp; Download</button>
     </form>
@@ -393,15 +406,21 @@ select option { background: var(--card) }
   <div class="about-grid">
     <div class="card highlight">
       <div style="font:500 10px var(--mono);color:var(--cy);text-transform:uppercase;letter-spacing:2.5px;margin-bottom:8px">zupt CLI</div>
-      <div style="font:800 40px var(--mono);color:#fff">2.1.7</div>
-      <p style="font:14px/1.7 var(--sans);color:var(--text2);margin-top:14px">Pure C11 backup utility with post-quantum encryption, hardware-adaptive codecs, block deduplication, and full-disk backup.</p>
+      <div style="font:800 40px var(--mono);color:#fff">2.2.3</div>
+      <p style="font:14px/1.7 var(--sans);color:var(--text2);margin-top:14px">Pure C11 backup utility with hybrid post-quantum encryption (ML-KEM-768 + X25519), hardware-adaptive codecs, block deduplication, and full-disk backup.</p>
       <p style="font:11px var(--mono);color:var(--text3);margin-top:18px">&copy; 2026 Cristian Cezar Mois&eacute;s — AGPL-3.0-or-later</p>
     </div>
     <div class="card">
-      <div style="font:500 10px var(--mono);color:var(--green);text-transform:uppercase;letter-spacing:2.5px;margin-bottom:8px">libzupt SDK</div>
-      <div style="font:800 40px var(--mono);color:#fff">1.0.2</div>
-      <p style="font:14px/1.7 var(--sans);color:var(--text2);margin-top:14px">C++17 / Python library for ML-KEM-768 + X25519 hybrid key encapsulation.</p>
-      <p style="font:11px var(--mono);color:var(--text3);margin-top:18px">Alessandro de Oliveira Faria — MIT</p>
+      <div style="font:500 10px var(--mono);color:var(--cy);text-transform:uppercase;letter-spacing:2.5px;margin-bottom:8px">VaptVupt codec</div>
+      <div style="font:800 40px var(--mono);color:#fff">2.48.2</div>
+      <p style="font:14px/1.7 var(--sans);color:var(--text2);margin-top:14px">Embedded LZ77 + tANS codec. Cost-aware lazy parser, 4-stream Huffman, encoder memory hygiene. Beats zstd-3 by 1.07% aggregate ratio with a single-file amalgamation.</p>
+      <p style="font:11px var(--mono);color:var(--text3);margin-top:18px">&copy; 2026 Cristian Cezar Mois&eacute;s — GPL-3.0-or-later</p>
+    </div>
+    <div class="card">
+      <div style="font:500 10px var(--mono);color:var(--cy);text-transform:uppercase;letter-spacing:2.5px;margin-bottom:8px">libzuptsdk</div>
+      <div style="font:800 40px var(--mono);color:#fff">2.0.0</div>
+      <p style="font:14px/1.7 var(--sans);color:var(--text2);margin-top:14px">SDK that powers <code>--pq-sdk</code>: HKDF-SHA3-256 combiner, key commitment, HPKE binding, Argon2id, XChaCha20-Poly1305 / AES-256-SIV AEAD.</p>
+      <p style="font:11px var(--mono);color:var(--text3);margin-top:18px">&copy; 2026 Cristian Cezar Mois&eacute;s — AGPL-3.0-or-later</p>
     </div>
   </div>
   <div class="card">
@@ -418,7 +437,7 @@ select option { background: var(--card) }
 </section>
 
 <footer class="footer">
-  <span><a href="https://github.com/cristiancmoises/zupt">zupt</a> &middot; <a href="https://github.com/cabelo/libzupt">libzupt</a> &middot; {{ version }}</span>
+  <span><a href="https://git.securityops.co/cristiancmoises/zupt">zupt</a> &middot; <a href="https://git.securityops.co/cristiancmoises/vaptvupt">vaptvupt</a> &middot; <a href="https://git.securityops.co/cristiancmoises/libzuptsdk">libzuptsdk</a> &middot; {{ version }}</span>
   <span>ML-KEM-768 + X25519 + AES-256 + Block Dedup</span>
 </footer>
 </div>

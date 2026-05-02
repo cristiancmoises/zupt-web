@@ -1,11 +1,59 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 # Copyright (C) 2026 Cristian Cezar Moisés
 # Commercial licensing: sac@securityops.co
+#
+# Run:    docker compose up -d
+# Stop:   docker compose down
+# Logs:   docker compose logs -f
+# Open:   http://localhost:8181
 services:
   zupt:
     build:
       context: .
       network: host
+    image: zupt-web:2.2.3
+    container_name: zupt-web
     ports:
       - "8181:8080"
-    restart: no
+    restart: unless-stopped
+
+    # ─── Security ───
+    # no-new-privileges: prevents setuid/file-cap escalation post-exec.
+    # cap_drop ALL + cap_add only what nginx + Python need (none — nginx
+    # binds to 8080 which is unprivileged).
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    # tmpfs mounts: writeable scratch for the workdir and nginx caches
+    # so the container's own root filesystem can stay read-only.
+    read_only: true
+    tmpfs:
+      - /tmp:size=4G,mode=1777
+      - /tmp/zupt-work:size=2G,mode=700,uid=1001,gid=1001
+      - /var/run:size=8M
+      - /var/log/nginx:size=64M
+      - /var/lib/nginx:size=64M
+
+    # ─── Resource limits (defence against runaway compress jobs) ───
+    deploy:
+      resources:
+        limits:
+          cpus: "4.0"
+          memory: 4G
+        reservations:
+          memory: 256M
+
+    # ─── Logging hygiene ───
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:8080/healthz"]
+      interval: 30s
+      timeout: 5s
+      start_period: 5s
+      retries: 3

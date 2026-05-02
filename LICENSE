@@ -73,15 +73,40 @@ alternative licensing terms.
 BUNDLED COMPONENTS
 --------------------------------------------------------------------------------
 
-The `zupt-2.1.7/` subdirectory contains the Zupt CLI source tree and
-is itself licensed under AGPL-3.0-or-later (with the integrated
-VaptVupt compression codec licensed under GPL-3.0-or-later, which is
-two-way compatible with AGPL-3.0-or-later via section 13 of both
-licenses).
+This release of Zupt-Web bundles three components, each with its own
+license. All are compatible with AGPL-3.0-or-later.
 
-See:
-  * zupt-2.1.7/LICENSE           — AGPL-3.0-or-later notice
-  * zupt-2.1.7/LICENSE-VAPTVUPT  — GPL-3.0-or-later notice for the codec
+  * `zupt-2.2.3/`                   — Zupt CLI source tree
+                                       AGPL-3.0-or-later
+                                       Most files in this subdirectory.
+
+  * `zupt-2.2.3/src/vv_*.c`,        — VaptVupt 2.48.2 compression codec
+    `zupt-2.2.3/src/vaptvupt_api.c`,   GPL-3.0-or-later
+    `zupt-2.2.3/include/vv_*.h`,       (Two-way compatible with AGPL-3.0
+    `zupt-2.2.3/include/vaptvupt*.h`    via section 13 of both licenses.
+                                        Deliberately GPL — not AGPL — so
+                                        the codec can eventually be
+                                        considered for upstreaming into
+                                        the Linux/BSD kernels which
+                                        require GPL-compatible licensing.)
+
+  * `zupt-2.2.3/vendor/zuptsdk/    — libzuptsdk 2.0.0 shared library
+       libzuptsdk.so.2.0.0`            AGPL-3.0-or-later
+                                       Powers `--pq-sdk`: HKDF-SHA3-256
+                                       combiner, key commitment, HPKE
+                                       binding, Argon2id, AEAD wrappers.
+
+The bundled CLI links to the libzuptsdk shared object via RUNPATH
+`/usr/lib/zupt` inside the runtime container. See:
+
+  * zupt-2.2.3/LICENSE                — AGPL-3.0-or-later notice
+  * zupt-2.2.3/THIRD-PARTY-NOTICES.md — full attribution + per-file SPDX
+
+All upstream sources are also published independently at:
+
+  * https://git.securityops.co/cristiancmoises/zupt
+  * https://git.securityops.co/cristiancmoises/vaptvupt
+  * https://git.securityops.co/cristiancmoises/libzuptsdk
 
 ================================================================================
                 THE FULL TEXT OF THE GNU AFFERO GENERAL PUBLIC
