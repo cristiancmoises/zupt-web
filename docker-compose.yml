@@ -36,10 +36,16 @@ services:
       - /var/lib/nginx:size=64M
 
     # ─── Resource limits (defence against runaway compress jobs) ───
+    # CPU is unconstrained by default — compression scales with cores.
+    # If your host has spare capacity issues, uncomment and tune the
+    # 'cpus:' line below; the value MUST NOT exceed the cores available
+    # to the Docker daemon (e.g. on a 2-core host, "cpus: 2.0" is the
+    # maximum). Memory is capped at 4 GiB to bound the worst-case
+    # compress job's RSS.
     deploy:
       resources:
         limits:
-          cpus: "4.0"
+          # cpus: "4.0"     # uncomment + adjust to your host's core count
           memory: 4G
         reservations:
           memory: 256M
