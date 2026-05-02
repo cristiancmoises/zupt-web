@@ -21,22 +21,11 @@ RUN apt-get update && \
 
 WORKDIR /build
 COPY zupt-2.2.3/ .
+COPY build-zupt.sh /build/build-zupt.sh
 
-# The vendored libzuptsdk ships as three names: the real .so.2.0.0
-# plus two SONAME/ld-name symlinks. Symlinks can be lost in transit
-# (Windows git clones, archives extracted without --same-owner, custom
-# .dockerignore filters) so recreate them defensively before linking.
-# Then build, strip, and retarget RUNPATH.
-RUN cd vendor/zuptsdk && \
-    if [ ! -L libzuptsdk.so ]      || [ ! -e libzuptsdk.so ];      then ln -sf libzuptsdk.so.2.0.0 libzuptsdk.so;      fi && \
-    if [ ! -L libzuptsdk.so.2 ]    || [ ! -e libzuptsdk.so.2 ];    then ln -sf libzuptsdk.so.2.0.0 libzuptsdk.so.2;    fi && \
-    ls -la libzuptsdk.so* && \
-    cd /build && \
-    make clean && \
-    make -j"$(nproc)" && \
-    strip zupt && \
-    patchelf --set-rpath '/usr/lib/zupt' zupt && \
-    readelf -d zupt | grep -E 'RUNPATH|RPATH'
+# All the build steps live in build-zupt.sh — much easier to edit, and
+# much harder for an editor or paste tool to mangle than a long inline RUN.
+RUN chmod +x /build/build-zupt.sh && /build/build-zupt.sh
 
 # ───────────────────────────────────────────────────────────────────
 # Stage 2: runtime
