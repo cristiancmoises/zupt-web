@@ -22,10 +22,17 @@ RUN apt-get update && \
 WORKDIR /build
 COPY zupt-2.2.3/ .
 
-# Build (vendored libzuptsdk.so under vendor/zuptsdk/ is picked up automatically).
-# After build, retarget RUNPATH from $ORIGIN/vendor/zuptsdk to the
-# canonical /usr/lib/zupt path the runtime image will use.
-RUN make clean && \
+# The vendored libzuptsdk ships as three names: the real .so.2.0.0
+# plus two SONAME/ld-name symlinks. Symlinks can be lost in transit
+# (Windows git clones, archives extracted without --same-owner, custom
+# .dockerignore filters) so recreate them defensively before linking.
+# Then build, strip, and retarget RUNPATH.
+RUN cd vendor/zuptsdk && \
+    if [ ! -L libzuptsdk.so ]      || [ ! -e libzuptsdk.so ];      then ln -sf libzuptsdk.so.2.0.0 libzuptsdk.so;      fi && \
+    if [ ! -L libzuptsdk.so.2 ]    || [ ! -e libzuptsdk.so.2 ];    then ln -sf libzuptsdk.so.2.0.0 libzuptsdk.so.2;    fi && \
+    ls -la libzuptsdk.so* && \
+    cd /build && \
+    make clean && \
     make -j"$(nproc)" && \
     strip zupt && \
     patchelf --set-rpath '/usr/lib/zupt' zupt && \
