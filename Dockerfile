@@ -16,7 +16,8 @@ FROM ubuntu:24.04 AS builder
 
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
-      gcc make libc6-dev binutils patchelf && \
+      gcc make libc6-dev binutils patchelf \
+      libargon2-1 libssl3t64 && \
     rm -rf /var/lib/apt/lists/*
 
 WORKDIR /build
@@ -48,7 +49,7 @@ LABEL org.opencontainers.image.commercial="sac@securityops.co"
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
       python3 python3-pip nginx tar curl ca-certificates \
-      libargon2-1 libssl3 tini && \
+      libargon2-1 libssl3t64 tini && \
     rm -rf /var/lib/apt/lists/* && \
     pip3 install --break-system-packages --no-cache-dir \
         flask==3.0.3 gunicorn==23.0.0
