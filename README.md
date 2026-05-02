@@ -18,10 +18,11 @@ This release bundles **Zupt CLI 2.2.3** (with **VaptVupt 2.48.2** codec and **li
 - **Bundled CLI upgraded** — Zupt 2.1.7 → **Zupt 2.2.3** (VaptVupt 2.48.2 codec, libzuptsdk 2.0).
 - **`--pq-sdk` exposed in the UI** — separate "SDK v2 Keypair" button, separate file upload field for SDK public/private keys in the compress/extract forms. SDK v2 = HKDF-SHA3-256 combiner + key commitment + HPKE binding + Argon2id. Recommended for new archives.
 - **`--dedup` exposed in the UI** — checkbox in the compress form (block-level deduplication via XXH64 fingerprint index).
-- **Upload-size mismatch fixed** — `app.py` capped uploads at 34 MB while `nginx.conf` allowed 2 GB. Both now default to **2 GiB** and are configurable via `ZUPT_MAX_UPLOAD_MB` (app) and `client_max_body_size` (nginx).
+- **Upload-size mismatch fixed** — `app.py` capped uploads at 34 MB while the previous nginx layer allowed 2 GB. Now defaults to **2 GiB** and is configurable via `ZUPT_MAX_UPLOAD_MB`.
 - **`/healthz` endpoint** — separate from `/version`. No CLI fork on each call, no rate limit, used by the Docker `HEALTHCHECK`.
-- **Container hardening** — runs the Python app as `zuptweb` (uid 1001), not root. `read_only: true` root filesystem with `tmpfs` mounts for the work dir and nginx caches. `cap_drop: ALL`, `no-new-privileges`, `tini` as PID 1.
-- **Performance tuning** — gunicorn `--max-requests 1000 --max-requests-jitter 100` (recycles workers periodically to bound RSS), nginx `gzip on` for HTML/JSON, `sendfile on` for archive downloads, `proxy_request_buffering off` for streaming uploads.
+- **Single-process container** — dropped the nginx tier. Gunicorn binds 8080 directly; Flask serves `/static/` and sets all security headers (CSP, X-Frame-Options, COOP, CORP, Permissions-Policy, X-Content-Type-Options) in `@app.after_request`. One process tree under `tini`, no `su`, no shell-fork chain — much easier to debug, far fewer failure modes.
+- **Container hardening** — runs the Python app as `zuptweb` (uid 1001) via `USER zuptweb` in the Dockerfile. `no-new-privileges`, `tini` as PID 1. Workdir is a tmpfs mount (uid-mapped to 1001).
+- **Performance tuning** — gunicorn `--max-requests 1000 --max-requests-jitter 100` (recycles workers periodically to bound RSS), `--keep-alive 5`, `--graceful-timeout 30`.
 - **Password scrubbing** — passwords are stripped out of error messages before being rendered, so a stray CLI error that quotes back the password can't leak it.
 - **Repo move reflected** — github.com/cristiancmoises/* → git.securityops.co/cristiancmoises/*.
 
@@ -43,17 +44,18 @@ This release bundles **Zupt CLI 2.2.3** (with **VaptVupt 2.48.2** codec and **li
 
 ## Security posture
 
-- **Runs as non-root** in the container (`zuptweb`, uid 1001). Root filesystem is mounted read-only; only `/tmp`, `/tmp/zupt-work`, `/var/run`, `/var/log/nginx`, `/var/lib/nginx` are writable (tmpfs).
-- **`cap_drop: ALL` + `no-new-privileges`** — no path to capability-based or setuid escalation if a worker is compromised.
+- **Runs as non-root** in the container (`zuptweb`, uid 1001) via `USER zuptweb` in the Dockerfile. There is no `root`-owned process at runtime.
+- **`no-new-privileges`** enabled in `docker-compose.yml` — no path to capability-based or setuid escalation.
 - **CSRF tokens** on every form (double-submit cookie, `hmac.compare_digest` constant-time check).
 - **Rate limiting** — 10 keygen/min, 30 compress·extract·test/min per IP.
-- **Tight Content-Security-Policy** at nginx — `default-src 'none'; script-src 'self' 'unsafe-inline'; …; frame-ancestors 'none'` (the `unsafe-inline` is required because templates are deliberately single-file with inline `<style>` and minimal `<script>`; no separate `.js`/`.css` files are served).
+- **Tight Content-Security-Policy** set by Flask in `@app.after_request`: `default-src 'none'; script-src 'self' 'unsafe-inline'; …; frame-ancestors 'none'` (the `unsafe-inline` is required because templates are deliberately single-file with inline `<style>` and minimal `<script>`; no separate `.js`/`.css` files are served).
+- **Full security header set** applied by Flask: CSP, X-Frame-Options DENY, X-Content-Type-Options nosniff, X-XSS-Protection, Referrer-Policy, Cross-Origin-Opener-Policy, Cross-Origin-Resource-Policy, Permissions-Policy (camera/mic/geo/payment/USB/interest-cohort revoked).
 - **No `shell=True`** — every subprocess call uses explicit argv.
 - **Path traversal protection** — filenames sanitised, paths verified with `Path.resolve().relative_to(WORKDIR)`.
 - **Password scrubbing** — passwords are stripped from error output before being rendered to the browser.
 - **Keys auto-expire** from the server after 4 h (`ZUPT_KEY_TTL_SEC` env override).
-- **Nginx hardened** — `server_tokens off`, `X-Frame-Options DENY`, `Cross-Origin-Opener-Policy same-origin`, `Permissions-Policy` revokes camera/mic/geo/payment/USB/interest-cohort.
-- **Container resource limits** — `cpus: 4.0`, `memory: 4G` in `docker-compose.yml` (defence against runaway compress jobs).
+- **Workdir is a tmpfs** (`/tmp/zupt-work`, uid-mapped to 1001) — compress jobs never touch the container's writable layer.
+- **Container resource limits** — `memory: 4G` in `docker-compose.yml` (defence against runaway compress jobs). CPU is uncapped by default; uncomment the `cpus:` line if your host is shared.
 - **HEALTHCHECK** uses dedicated `/healthz` endpoint — no CLI fork on each probe, no rate-limit consumption, no auth roundtrip.
 
 ## Screenshots
@@ -112,12 +114,11 @@ Open **http://localhost:8181**.
 ### Tuning
 
 ```bash
-# Cap upload size (both nginx and app must agree). Default: 2 GiB.
+# Cap upload size. Default: 2 GiB.
 # Edit app.py — value in MEGABYTES:
 app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024   # 50 MB
-# Edit nginx.conf:
-client_max_body_size 50M;
-# Or override at runtime via env:
+
+# Or override at runtime via env (no rebuild needed):
 docker run -e ZUPT_MAX_UPLOAD_MB=50 -p 8181:8080 zupt-web:2.2.3
 ```
 
@@ -149,14 +150,16 @@ docker exec -t zupt-web zupt --version
 
 ```
 ┌────────────────────────────────────────────────────┐
-│  Browser  ──HTTPS/HTTP──▶  nginx  ──127.0.0.1──▶  │
-│                            (8080)         gunicorn │
-│                                           (5000)   │
-│                                              │     │
-│                                              ▼     │
-│                                          Flask app │
-│                                              │     │
-│                                              ▼     │
+│  Browser  ──HTTP──▶  gunicorn  (port 8080, 2 wk) ──┐
+│                                                    │
+│                                              Flask app
+│                                              (sets all
+│                                               security
+│                                               headers,
+│                                               serves
+│                                               /static/)
+│                                                    │
+│                                                    ▼
 │                                  /usr/local/bin/zupt
 │                                              │     │
 │                                              ▼     │
@@ -165,9 +168,8 @@ docker exec -t zupt-web zupt --version
 └────────────────────────────────────────────────────┘
 ```
 
-- **nginx** terminates HTTP, enforces CSP/headers, gzips text responses, streams uploads (no buffering on disk).
-- **gunicorn** runs the Flask app as `zuptweb` (uid 1001), 2 workers, 600 s timeout for long compress jobs, recycles workers every 1000 ± 100 requests.
-- **Flask app** (`app.py`) accepts uploads, calls the `zupt` CLI via explicit argv (no shell), streams the result back.
+- **gunicorn** binds 8080 directly as `zuptweb` (uid 1001), 2 workers, 600 s timeout for long compress jobs, recycles workers every 1000 ± 100 requests. PID 1 is `tini` for proper signal forwarding and zombie reaping.
+- **Flask app** (`app.py`) serves the UI, accepts uploads, sets all security headers in `@app.after_request`, serves static files from `static/`, and calls the `zupt` CLI via explicit argv (no shell). Streams the result back to the browser.
 - **zupt CLI** (built from the bundled `zupt-2.2.3/` source tree) does the actual compress/encrypt/extract work. Links to **libzuptsdk** via `RUNPATH=/usr/lib/zupt`.
 
 ## Project family

@@ -13,39 +13,35 @@ services:
       network: host
     image: zupt-web:2.2.3
     container_name: zupt-web
+    pull_policy: build       # never try to pull from a registry; build locally
     ports:
       - "8181:8080"
     restart: unless-stopped
 
     # ─── Security ───
-    # no-new-privileges: prevents setuid/file-cap escalation post-exec.
-    # cap_drop ALL + cap_add only what nginx + Python need (none — nginx
-    # binds to 8080 which is unprivileged).
+    # Practical defence-in-depth: the Python app is already run as
+    # uid 1001 (zuptweb) inside the container, so privilege escalation
+    # via container processes requires both a kernel exploit and a
+    # capability that no-new-privileges blocks.
     security_opt:
       - no-new-privileges:true
-    cap_drop:
-      - ALL
-    # tmpfs mounts: writeable scratch for the workdir and nginx caches
-    # so the container's own root filesystem can stay read-only.
-    read_only: true
-    tmpfs:
-      - /tmp:size=4G,mode=1777
-      - /tmp/zupt-work:size=2G,mode=700,uid=1001,gid=1001
-      - /var/run:size=8M
-      - /var/log/nginx:size=64M
-      - /var/lib/nginx:size=64M
 
-    # ─── Resource limits (defence against runaway compress jobs) ───
-    # CPU is unconstrained by default — compression scales with cores.
-    # If your host has spare capacity issues, uncomment and tune the
-    # 'cpus:' line below; the value MUST NOT exceed the cores available
-    # to the Docker daemon (e.g. on a 2-core host, "cpus: 2.0" is the
-    # maximum). Memory is capped at 4 GiB to bound the worst-case
-    # compress job's RSS.
+    # tmpfs for the work dir so compress jobs never touch the container's
+    # writable layer (faster, and makes job cleanup atomic on restart).
+    tmpfs:
+      - /tmp/zupt-work:size=2G,mode=700,uid=1001,gid=1001
+
+    # ─── Resource limits ───
+    # CPU is unconstrained by default — compression scales naturally
+    # with available cores. Memory is capped at 4 GiB to bound the
+    # worst-case compress job's RSS.
+    # If you want to also cap CPU, uncomment 'cpus:' below; the value
+    # MUST NOT exceed the cores available to the Docker daemon (e.g. on
+    # a 2-core host, "cpus: 2.0" is the maximum).
     deploy:
       resources:
         limits:
-          # cpus: "4.0"     # uncomment + adjust to your host's core count
+          # cpus: "4.0"
           memory: 4G
         reservations:
           memory: 256M
@@ -58,7 +54,7 @@ services:
         max-file: "3"
 
     healthcheck:
-      test: ["CMD", "curl", "-sf", "http://localhost:8080/healthz"]
+      test: ["CMD", "curl", "-sf", "http://127.0.0.1:8080/healthz"]
       interval: 30s
       timeout: 5s
       start_period: 5s

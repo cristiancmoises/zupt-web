@@ -6,14 +6,21 @@
 #   1) "builder" — gcc + make, builds zupt-2.2.3 with the vendored
 #      libzuptsdk (under vendor/zuptsdk/), strips, and patches the
 #      RUNPATH so the runtime image can find the SDK at /usr/lib/zupt.
-#   2) Runtime — minimal ubuntu:24.04 with python3, nginx, gunicorn.
-#      Runs the Python app as a dedicated non-root user (zuptweb, uid 1001).
+#   2) Runtime — minimal ubuntu:24.04 with python3 + gunicorn only.
+#      No nginx (gunicorn binds 8080 directly, security headers and
+#      static-file serving are handled by Flask). One process tree =
+#      easier to debug, harder to break, no fs-permission gymnastics.
+#      Runs as a dedicated non-root user (zuptweb, uid 1001).
 
 # ───────────────────────────────────────────────────────────────────
 # Stage 1: builder
 # ───────────────────────────────────────────────────────────────────
 FROM ubuntu:24.04 AS builder
 
+# Builder needs gcc/make to compile zupt, plus libargon2-1 + libssl3t64
+# at link time because the vendored libzuptsdk.so has DT_NEEDED entries
+# for libargon2.so.1 and libcrypto.so.3 (Argon2id + OpenSSL primitives
+# powering --pq-sdk). patchelf retargets the binary's RUNPATH.
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
       gcc make libc6-dev binutils patchelf \
@@ -44,11 +51,11 @@ LABEL org.opencontainers.image.documentation="https://git.securityops.co/cristia
 LABEL org.opencontainers.image.vendor="securityops.co"
 LABEL org.opencontainers.image.commercial="sac@securityops.co"
 
-# Runtime deps: python3 + nginx for the web tier; libargon2-1 + libssl3
-# for the bundled libzuptsdk's hybrid-PQ crypto.
+# Runtime deps: python3 + tar + curl + tini, plus libargon2-1 + libssl3t64
+# for libzuptsdk's runtime crypto. NO nginx — gunicorn binds 8080 directly.
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
-      python3 python3-pip nginx tar curl ca-certificates \
+      python3 python3-pip tar curl ca-certificates \
       libargon2-1 libssl3t64 tini && \
     rm -rf /var/lib/apt/lists/* && \
     pip3 install --break-system-packages --no-cache-dir \
@@ -66,42 +73,44 @@ RUN chmod 755 /usr/local/bin/zupt && \
 COPY app.py /opt/zupt/app.py
 COPY templates/ /opt/zupt/templates/
 COPY static/ /opt/zupt/static/
-COPY nginx.conf /etc/nginx/sites-enabled/default
 
 # ─── Dedicated non-root user (defence-in-depth) ───
-# Flask + gunicorn run as 'zuptweb' (uid 1001). Nginx still binds to
-# port 8080 as root via the master process, then drops to 'www-data'
-# for workers (default Ubuntu nginx behaviour).
 RUN useradd --system --no-create-home --shell /usr/sbin/nologin --uid 1001 zuptweb && \
     mkdir -p /tmp/zupt-work && \
     chown zuptweb:zuptweb /tmp/zupt-work /opt/zupt && \
     chmod 700 /tmp/zupt-work && \
     python3 -c "import secrets; print(secrets.token_hex(32))" > /opt/zupt/.secret && \
     chown zuptweb:zuptweb /opt/zupt/.secret && \
-    chmod 600 /opt/zupt/.secret
+    chmod 400 /opt/zupt/.secret
 
-# ─── Entrypoint ───
-RUN printf '%s\n' \
-    '#!/bin/bash' \
-    'set -e' \
-    'export ZUPT_SECRET_KEY=$(cat /opt/zupt/.secret)' \
-    'export ZUPT_BIN=/usr/local/bin/zupt' \
-    'export ZUPT_WORKDIR=/tmp/zupt-work' \
-    'cd /opt/zupt' \
-    '# Start gunicorn as zuptweb (non-root)' \
-    'su -s /bin/bash -c "gunicorn -b 127.0.0.1:5000 -w 2 \' \
-    '    --timeout 600 --graceful-timeout 30 --keep-alive 5 \' \
-    '    --max-requests 1000 --max-requests-jitter 100 \' \
-    '    --access-logfile - --error-logfile - app:app &" zuptweb' \
-    '# Run nginx in foreground (master as root, workers drop to www-data)' \
-    'exec nginx -g "daemon off;"' \
-    > /opt/zupt/start.sh && chmod 755 /opt/zupt/start.sh
+# Switch to the non-root user. tini will be PID 1, gunicorn its child,
+# both running as zuptweb. No su, no nginx, no shell-fork chain.
+USER zuptweb
+WORKDIR /opt/zupt
+ENV ZUPT_BIN=/usr/local/bin/zupt \
+    ZUPT_WORKDIR=/tmp/zupt-work \
+    PYTHONUNBUFFERED=1
 
 EXPOSE 8080
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
-  CMD curl -sf http://localhost:8080/healthz >/dev/null || exit 1
+  CMD curl -sf http://127.0.0.1:8080/healthz >/dev/null || exit 1
 
-# tini: PID 1, reaps zombies, forwards signals
+# tini reaps zombies and forwards signals cleanly.
 ENTRYPOINT ["/usr/bin/tini", "--"]
-CMD ["/bin/bash", "/opt/zupt/start.sh"]
+# Gunicorn binds 8080 directly. Two workers, 600s timeout for long
+# compress jobs, recycle every 1000±100 requests to bound RSS, log
+# access + error to stdout/stderr (Docker captures both).
+CMD ["sh", "-c", "\
+    export ZUPT_SECRET_KEY=$(cat /opt/zupt/.secret) && \
+    exec gunicorn \
+      --bind 0.0.0.0:8080 \
+      --workers 2 \
+      --timeout 600 \
+      --graceful-timeout 30 \
+      --keep-alive 5 \
+      --max-requests 1000 \
+      --max-requests-jitter 100 \
+      --access-logfile - \
+      --error-logfile - \
+      app:app"]

@@ -32,9 +32,8 @@ app = Flask(__name__)
 app.secret_key = os.environ.get('ZUPT_SECRET_KEY', secrets.token_hex(32))
 
 # ─── Config ───
-# Upload size cap: aligned with nginx.conf's client_max_body_size.
-# Both default to 2 GiB so neither tier silently truncates the other.
-# Override via env if you need to tighten or relax.
+# Upload size cap. Override via ZUPT_MAX_UPLOAD_MB env var.
+# Default: 2 GiB.
 MAX_UPLOAD_MB = int(os.environ.get('ZUPT_MAX_UPLOAD_MB', '2048'))
 app.config['MAX_CONTENT_LENGTH'] = MAX_UPLOAD_MB * 1024 * 1024
 
@@ -101,12 +100,28 @@ def headers(response):
         response.set_cookie('csrf_token', g.csrf_token,
                             httponly=True, samesite='Strict',
                             secure=request.is_secure, max_age=3600)
-    # nginx already sets these for browser clients; we set them too so a
-    # direct-to-gunicorn deployment is also safe.
-    response.headers.setdefault('X-Content-Type-Options', 'nosniff')
-    response.headers.setdefault('X-Frame-Options', 'DENY')
-    response.headers.setdefault('Referrer-Policy', 'no-referrer')
-    response.headers.setdefault('Cross-Origin-Opener-Policy', 'same-origin')
+    # Full security header set — applied directly by Flask/gunicorn.
+    # The runtime container has no separate proxy.
+    response.headers.setdefault('X-Content-Type-Options',       'nosniff')
+    response.headers.setdefault('X-Frame-Options',              'DENY')
+    response.headers.setdefault('X-XSS-Protection',             '1; mode=block')
+    response.headers.setdefault('Referrer-Policy',              'no-referrer')
+    response.headers.setdefault('Cross-Origin-Opener-Policy',   'same-origin')
+    response.headers.setdefault('Cross-Origin-Resource-Policy', 'same-origin')
+    response.headers.setdefault('Permissions-Policy',
+        'camera=(), microphone=(), geolocation=(), payment=(), usb=(), interest-cohort=()')
+    response.headers.setdefault('Content-Security-Policy',
+        "default-src 'none'; "
+        "script-src 'self' 'unsafe-inline'; "
+        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
+        "font-src 'self' https://fonts.gstatic.com; "
+        "img-src 'self' data:; "
+        "form-action 'self'; "
+        "frame-ancestors 'none'; "
+        "base-uri 'self'; "
+        "connect-src 'self'")
+    # Note: 'Server: gunicorn/...' is set by gunicorn itself and cannot
+    # be overridden from the WSGI app. It's harmless info disclosure.
     return response
 
 
