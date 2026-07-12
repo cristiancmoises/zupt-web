@@ -3,37 +3,40 @@
 # Commercial licensing: sac@securityops.co
 #
 # Two-stage build:
-#   1) "builder" — gcc + make, builds zupt-2.2.3 with the vendored
-#      libzuptsdk (under vendor/zuptsdk/), strips, and patches the
-#      RUNPATH so the runtime image can find the SDK at /usr/lib/zupt.
+#   1) "builder" — gcc + make, builds vaptvupt-5.2.1 WITH_SDK=1 with the
+#      vendored libvuptsdk (under vendor/vuptsdk/), strips, and patches
+#      the RUNPATH so the runtime image can find the SDK at
+#      /usr/lib/vaptvupt.
 #   2) Runtime — minimal ubuntu:24.04 with python3 + gunicorn only.
 #      No nginx (gunicorn binds 8080 directly, security headers and
 #      static-file serving are handled by Flask). One process tree =
 #      easier to debug, harder to break, no fs-permission gymnastics.
-#      Runs as a dedicated non-root user (zuptweb, uid 1001).
+#      Runs as a dedicated non-root user (vaptvupt, uid 1001).
 
 # ───────────────────────────────────────────────────────────────────
 # Stage 1: builder
 # ───────────────────────────────────────────────────────────────────
 FROM ubuntu:24.04 AS builder
 
-# Builder needs gcc/make to compile zupt, plus libargon2-1 + libssl3t64
-# at link time because the vendored libzuptsdk.so has DT_NEEDED entries
-# for libargon2.so.1 and libcrypto.so.3 (Argon2id + OpenSSL primitives
-# powering --pq-sdk). patchelf retargets the binary's RUNPATH.
+# Builder needs gcc/make to compile vaptvupt. A WITH_SDK=1 build links
+# -lvuptsdk -lcrypto -largon2 (Argon2id + OpenSSL primitives powering
+# --pq-sdk and the Argon2id password KDF), so the linker needs the
+# libssl-dev / libargon2-dev .so symlinks, not just the runtime libs.
+# patchelf retargets the binary's RUNPATH.
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
       gcc make libc6-dev binutils patchelf \
-      libargon2-1 libssl3t64 && \
+      libargon2-dev libssl-dev && \
     rm -rf /var/lib/apt/lists/*
 
 WORKDIR /build
-COPY zupt-2.2.3/ .
-COPY build-zupt.sh /build/build-zupt.sh
+COPY vaptvupt-5.2.1/ .
+COPY build-vaptvupt.sh /build/build-vaptvupt.sh
 
-# All the build steps live in build-zupt.sh — much easier to edit, and
-# much harder for an editor or paste tool to mangle than a long inline RUN.
-RUN chmod +x /build/build-zupt.sh && /build/build-zupt.sh
+# All the build steps live in build-vaptvupt.sh — much easier to edit,
+# and much harder for an editor or paste tool to mangle than a long
+# inline RUN.
+RUN chmod +x /build/build-vaptvupt.sh && /build/build-vaptvupt.sh
 
 # ───────────────────────────────────────────────────────────────────
 # Stage 2: runtime
@@ -41,18 +44,18 @@ RUN chmod +x /build/build-zupt.sh && /build/build-zupt.sh
 FROM ubuntu:24.04
 
 LABEL maintainer="Cristian Cezar Moisés <sac@securityops.co>"
-LABEL description="Zupt Web — Post-Quantum Backup Utility (browser frontend)"
-LABEL version="2.2.3"
-LABEL org.opencontainers.image.title="zupt-web"
-LABEL org.opencontainers.image.version="2.2.3"
+LABEL description="VaptVupt Web — Post-Quantum Backup Utility (browser frontend)"
+LABEL version="5.2.1"
+LABEL org.opencontainers.image.title="vaptvupt-web"
+LABEL org.opencontainers.image.version="5.2.1"
 LABEL org.opencontainers.image.licenses="AGPL-3.0-or-later"
-LABEL org.opencontainers.image.source="https://git.securityops.co/cristiancmoises/zupt-web"
-LABEL org.opencontainers.image.documentation="https://git.securityops.co/cristiancmoises/zupt-web/src/branch/main/README.md"
+LABEL org.opencontainers.image.source="https://git.securityops.co/cristiancmoises/vaptvupt-web"
+LABEL org.opencontainers.image.documentation="https://git.securityops.co/cristiancmoises/vaptvupt-web/src/branch/main/README.md"
 LABEL org.opencontainers.image.vendor="securityops.co"
 LABEL org.opencontainers.image.commercial="sac@securityops.co"
 
 # Runtime deps: python3 + tar + curl + tini, plus libargon2-1 + libssl3t64
-# for libzuptsdk's runtime crypto. NO nginx — gunicorn binds 8080 directly.
+# for libvuptsdk's runtime crypto. NO nginx — gunicorn binds 8080 directly.
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
       python3 python3-pip tar curl ca-certificates \
@@ -61,34 +64,37 @@ RUN apt-get update && \
     pip3 install --break-system-packages --no-cache-dir \
         flask==3.0.3 gunicorn==23.0.0
 
-# ─── Install zupt binary + bundled libzuptsdk ───
-COPY --from=builder /build/zupt /usr/local/bin/zupt
-COPY --from=builder /build/vendor/zuptsdk/libzuptsdk.so.2.0.0 /usr/lib/zupt/libzuptsdk.so.2.0.0
-RUN chmod 755 /usr/local/bin/zupt && \
-    ln -sf libzuptsdk.so.2.0.0 /usr/lib/zupt/libzuptsdk.so.2 && \
-    ln -sf libzuptsdk.so.2.0.0 /usr/lib/zupt/libzuptsdk.so && \
-    /usr/local/bin/zupt --version | head -3
+# ─── Install vaptvupt binary + bundled libvuptsdk ───
+# A legacy `zupt` symlink is kept for one major version cycle, matching
+# the upstream CLI's own install rule (v3.0.0 INPI Brasil rename).
+COPY --from=builder /build/vaptvupt /usr/local/bin/vaptvupt
+COPY --from=builder /build/vendor/vuptsdk/libvuptsdk.so.2.0.0 /usr/lib/vaptvupt/libvuptsdk.so.2.0.0
+RUN chmod 755 /usr/local/bin/vaptvupt && \
+    ln -sf vaptvupt /usr/local/bin/zupt && \
+    ln -sf libvuptsdk.so.2.0.0 /usr/lib/vaptvupt/libvuptsdk.so.2 && \
+    ln -sf libvuptsdk.so.2.0.0 /usr/lib/vaptvupt/libvuptsdk.so && \
+    /usr/local/bin/vaptvupt version
 
 # ─── Application code ───
-COPY app.py /opt/zupt/app.py
-COPY templates/ /opt/zupt/templates/
-COPY static/ /opt/zupt/static/
+COPY app.py /opt/vaptvupt/app.py
+COPY templates/ /opt/vaptvupt/templates/
+COPY static/ /opt/vaptvupt/static/
 
 # ─── Dedicated non-root user (defence-in-depth) ───
-RUN useradd --system --no-create-home --shell /usr/sbin/nologin --uid 1001 zuptweb && \
-    mkdir -p /tmp/zupt-work && \
-    chown zuptweb:zuptweb /tmp/zupt-work /opt/zupt && \
-    chmod 700 /tmp/zupt-work && \
-    python3 -c "import secrets; print(secrets.token_hex(32))" > /opt/zupt/.secret && \
-    chown zuptweb:zuptweb /opt/zupt/.secret && \
-    chmod 400 /opt/zupt/.secret
+RUN useradd --system --no-create-home --shell /usr/sbin/nologin --uid 1001 vaptvupt && \
+    mkdir -p /tmp/vaptvupt-work && \
+    chown vaptvupt:vaptvupt /tmp/vaptvupt-work /opt/vaptvupt && \
+    chmod 700 /tmp/vaptvupt-work && \
+    python3 -c "import secrets; print(secrets.token_hex(32))" > /opt/vaptvupt/.secret && \
+    chown vaptvupt:vaptvupt /opt/vaptvupt/.secret && \
+    chmod 400 /opt/vaptvupt/.secret
 
 # Switch to the non-root user. tini will be PID 1, gunicorn its child,
-# both running as zuptweb. No su, no nginx, no shell-fork chain.
-USER zuptweb
-WORKDIR /opt/zupt
-ENV ZUPT_BIN=/usr/local/bin/zupt \
-    ZUPT_WORKDIR=/tmp/zupt-work \
+# both running as vaptvupt. No su, no nginx, no shell-fork chain.
+USER vaptvupt
+WORKDIR /opt/vaptvupt
+ENV VAPTVUPT_BIN=/usr/local/bin/vaptvupt \
+    VAPTVUPT_WORKDIR=/tmp/vaptvupt-work \
     PYTHONUNBUFFERED=1
 
 EXPOSE 8080
@@ -98,15 +104,17 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
 
 # tini reaps zombies and forwards signals cleanly.
 ENTRYPOINT ["/usr/bin/tini", "--"]
-# Gunicorn binds 8080 directly. Two workers, 600s timeout for long
-# compress jobs, recycle every 1000±100 requests to bound RSS, log
-# access + error to stdout/stderr (Docker captures both).
+# Gunicorn binds 8080 directly. Two workers, 660s worker timeout —
+# deliberately ABOVE the app's 600s CLI subprocess timeout so the
+# worker survives long enough to render the timeout error page instead
+# of being SIGKILLed at the same moment. Recycle every 1000±100
+# requests to bound RSS, log access + error to stdout/stderr.
 CMD ["sh", "-c", "\
-    export ZUPT_SECRET_KEY=$(cat /opt/zupt/.secret) && \
+    export VAPTVUPT_SECRET_KEY=$(cat /opt/vaptvupt/.secret) && \
     exec gunicorn \
       --bind 0.0.0.0:8080 \
       --workers 2 \
-      --timeout 600 \
+      --timeout 660 \
       --graceful-timeout 30 \
       --keep-alive 5 \
       --max-requests 1000 \

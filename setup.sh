@@ -3,14 +3,14 @@
 # Copyright (C) 2026 Cristian Cezar Moisés
 # Commercial licensing: sac@securityops.co
 #
-# zupt-web setup helper. Idempotent — safe to re-run.
+# vaptvupt-web setup helper. Idempotent — safe to re-run.
 set -e
 
 PORT_HOST="${PORT_HOST:-8181}"
 
 cat <<'BANNER'
 ══════════════════════════════════════════════
-  zupt-web 2.2.3 — setup & deploy
+  vaptvupt-web 5.2.1 — setup & deploy
 ══════════════════════════════════════════════
 BANNER
 echo ""
@@ -52,10 +52,10 @@ fi
 echo ""
 
 # ─── Step 2: Build ───
-echo "[2/4] Building zupt-web (this builds the bundled zupt-2.2.3 from source)..."
+echo "[2/4] Building vaptvupt-web (this builds the bundled vaptvupt-5.2.1 from source)..."
 if ! docker compose build 2>/dev/null; then
     echo "  Compose build failed — retrying with --network=host..."
-    docker build --network=host -t zupt-web:2.2.3 .
+    docker build --network=host -t vaptvupt-web:5.2.1 .
 fi
 echo ""
 
@@ -77,19 +77,19 @@ for i in $(seq 1 20); do
 done
 
 if [ "$ok" -eq 1 ]; then
-    echo "  ✓ zupt-web is up — /healthz returns 200"
+    echo "  ✓ vaptvupt-web is up — /healthz returns 200"
     echo ""
     cat <<EOF
 ══════════════════════════════════════════════
   Open: http://localhost:${PORT_HOST}
   CLI version inside container:
 EOF
-    docker exec -t zupt-web /usr/local/bin/zupt --version 2>/dev/null | head -3 | sed 's/^/    /'
+    docker exec -t vaptvupt-web /usr/local/bin/vaptvupt version 2>/dev/null | head -3 | sed 's/^/    /'
     cat <<EOF
 ══════════════════════════════════════════════
 EOF
 else
     echo "  ⚠ /healthz did not respond within 20s — check logs:"
-    echo "     docker compose logs --tail=50 zupt"
+    echo "     docker compose logs --tail=50 vaptvupt"
 fi
 echo ""
