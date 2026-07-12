@@ -7,12 +7,12 @@
 # Logs:   docker compose logs -f
 # Open:   http://localhost:8181
 services:
-  zupt:
+  vaptvupt:
     build:
       context: .
       network: host
-    image: zupt-web:2.2.3
-    container_name: zupt-web
+    image: vaptvupt-web:5.2.1
+    container_name: vaptvupt-web
     pull_policy: build       # never try to pull from a registry; build locally
     ports:
       - "8181:8080"
@@ -20,7 +20,7 @@ services:
 
     # ─── Security ───
     # Practical defence-in-depth: the Python app is already run as
-    # uid 1001 (zuptweb) inside the container, so privilege escalation
+    # uid 1001 (vaptvupt) inside the container, so privilege escalation
     # via container processes requires both a kernel exploit and a
     # capability that no-new-privileges blocks.
     security_opt:
@@ -29,7 +29,7 @@ services:
     # tmpfs for the work dir so compress jobs never touch the container's
     # writable layer (faster, and makes job cleanup atomic on restart).
     tmpfs:
-      - /tmp/zupt-work:size=2G,mode=700,uid=1001,gid=1001
+      - /tmp/vaptvupt-work:size=2G,mode=700,uid=1001,gid=1001
 
     # ─── Resource limits ───
     # CPU is unconstrained by default — compression scales naturally

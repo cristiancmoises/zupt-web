@@ -1,17 +1,19 @@
 ================================================================================
-ZUPT-WEB — Browser-Based Frontend for Post-Quantum Backup Operations
+VAPTVUPT-WEB — Browser-Based Frontend for Post-Quantum Backup Operations
 
   Copyright (C) 2026  Cristian Cezar Moisés
   Contact for commercial licensing: sac@securityops.co
 
 ================================================================================
 
-Zupt-Web is free software: you can redistribute it and/or modify it under
+VaptVupt-Web (formerly Zupt-Web; renamed with the CLI's v3.0.0 rename
+because of a prior INPI Brasil trademark registration on the name "Zupt")
+is free software: you can redistribute it and/or modify it under
 the terms of the GNU Affero General Public License as published by the Free
 Software Foundation, either version 3 of the License, or (at your option)
 any later version.
 
-Zupt-Web is distributed in the hope that it will be useful, but WITHOUT
+VaptVupt-Web is distributed in the hope that it will be useful, but WITHOUT
 ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
 FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Affero General Public
 License for more details.
@@ -26,12 +28,12 @@ WHY AGPL-3.0
 This software is licensed under the GNU Affero General Public License v3.0
 (AGPL-3.0-or-later) for one reason: to keep it free for everyone.
 
-Zupt-Web is a network-facing application: it runs as a backend service
+VaptVupt-Web is a network-facing application: it runs as a backend service
 that processes user uploads and serves back the results. The AGPL is
-specifically chosen — over the GPL or MIT — because Zupt-Web is the
+specifically chosen — over the GPL or MIT — because VaptVupt-Web is the
 exact deployment shape that the AGPL exists to address.
 
-Any organization that runs a modified version of Zupt-Web as a network
+Any organization that runs a modified version of VaptVupt-Web as a network
 service (for example, as a hosted backup-as-a-service product, a cloud
 archival portal, an internal-tools backend exposed to non-employees, or
 any other commercial offering accessed over a network) MUST make the
@@ -39,7 +41,7 @@ corresponding source code of their modified version available to the
 users of that service.
 
 If you are an individual, a non-profit, a researcher, a student, a
-sysadmin, a homelab operator, or any business that simply RUNS Zupt-Web
+sysadmin, a homelab operator, or any business that simply RUNS VaptVupt-Web
 internally for your own use (without redistributing modifications and
 without operating it as a network service for third parties), the AGPL
 imposes essentially no obligations on you. Spin up the Docker stack.
@@ -51,11 +53,11 @@ COMMERCIAL LICENSING
 
 If your intended use is incompatible with the AGPL — for example:
 
-  * You wish to incorporate Zupt-Web into a closed-source product,
+  * You wish to incorporate VaptVupt-Web into a closed-source product,
     appliance, SaaS portal, or hosted backup-as-a-service offering.
-  * You wish to operate a modified Zupt-Web as a hosted service without
+  * You wish to operate a modified VaptVupt-Web as a hosted service without
     releasing your modifications to your end users.
-  * You wish to redistribute Zupt-Web as part of a proprietary
+  * You wish to redistribute VaptVupt-Web as part of a proprietary
     commercial product without the AGPL's source-disclosure obligations.
   * You require a warranty, indemnification, or written terms that the
     AGPL does not provide.
@@ -66,47 +68,48 @@ A commercial license is available. Please contact:
 
 Commercial licensing terms, pricing, and the scope of the granted rights
 are negotiated case-by-case. The author retains full copyright ownership
-of all original Zupt-Web source code and is therefore able to grant
+of all original VaptVupt-Web source code and is therefore able to grant
 alternative licensing terms.
 
 --------------------------------------------------------------------------------
 BUNDLED COMPONENTS
 --------------------------------------------------------------------------------
 
-This release of Zupt-Web bundles three components, each with its own
+This release of VaptVupt-Web bundles three components, each with its own
 license. All are compatible with AGPL-3.0-or-later.
 
-  * `zupt-2.2.3/`                   — Zupt CLI source tree
+  * `vaptvupt-5.2.1/`               — VaptVupt CLI source tree
                                        AGPL-3.0-or-later
                                        Most files in this subdirectory.
 
-  * `zupt-2.2.3/src/vv_*.c`,        — VaptVupt 2.48.2 compression codec
-    `zupt-2.2.3/src/vaptvupt_api.c`,   GPL-3.0-or-later
-    `zupt-2.2.3/include/vv_*.h`,       (Two-way compatible with AGPL-3.0
-    `zupt-2.2.3/include/vaptvupt*.h`    via section 13 of both licenses.
+  * `vaptvupt-5.2.1/src/vv_*.c`,    — VaptVupt 2.65.3 compression codec
+    `vaptvupt-5.2.1/src/vaptvupt_api.c`,  GPL-3.0-or-later
+    `vaptvupt-5.2.1/include/vv_*.h`,      (Two-way compatible with AGPL-3.0
+    `vaptvupt-5.2.1/include/vaptvupt*.h`   via section 13 of both licenses.
                                         Deliberately GPL — not AGPL — so
                                         the codec can eventually be
                                         considered for upstreaming into
                                         the Linux/BSD kernels which
                                         require GPL-compatible licensing.)
 
-  * `zupt-2.2.3/vendor/zuptsdk/    — libzuptsdk 2.0.0 shared library
-       libzuptsdk.so.2.0.0`            AGPL-3.0-or-later
-                                       Powers `--pq-sdk`: HKDF-SHA3-256
+  * `vaptvupt-5.2.1/vendor/vuptsdk/ — libvuptsdk 2.0.0 shared library
+       libvuptsdk.so.2.0.0`            AGPL-3.0-or-later
+                                       Powers `--pq-sdk` + the Argon2id
+                                       password KDF: HKDF-SHA3-256
                                        combiner, key commitment, HPKE
-                                       binding, Argon2id, AEAD wrappers.
+                                       binding, AEAD wrappers.
 
-The bundled CLI links to the libzuptsdk shared object via RUNPATH
-`/usr/lib/zupt` inside the runtime container. See:
+The bundled CLI links to the libvuptsdk shared object via RUNPATH
+`/usr/lib/vaptvupt` inside the runtime container. See:
 
-  * zupt-2.2.3/LICENSE                — AGPL-3.0-or-later notice
-  * zupt-2.2.3/THIRD-PARTY-NOTICES.md — full attribution + per-file SPDX
+  * vaptvupt-5.2.1/LICENSE                — AGPL-3.0-or-later notice
+  * vaptvupt-5.2.1/THIRD-PARTY-NOTICES.md — full attribution + per-file SPDX
 
 All upstream sources are also published independently at:
 
-  * https://git.securityops.co/cristiancmoises/zupt
   * https://git.securityops.co/cristiancmoises/vaptvupt
-  * https://git.securityops.co/cristiancmoises/libzuptsdk
+  * https://git.securityops.co/cristiancmoises/vaptvupt-codec
+  * https://git.securityops.co/cristiancmoises/libvuptsdk
 
 ================================================================================
                 THE FULL TEXT OF THE GNU AFFERO GENERAL PUBLIC

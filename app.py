@@ -3,22 +3,27 @@
 # Copyright (C) 2026 Cristian Cezar Moisés
 # Commercial licensing: sac@securityops.co
 """
-Zupt Web — Hardened REST backend for post-quantum backup operations.
+VaptVupt Web — Hardened REST backend for post-quantum backup operations.
 
 Licensed under the GNU Affero General Public License v3.0 or later.
 If you operate a modified version of this software as a network service,
 the AGPL requires you to make your modifications available to your users.
 For commercial licensing inquiries, contact: sac@securityops.co
 
-Backend for the bundled Zupt CLI (default 2.2.3) and libzuptsdk-2.0.
+Backend for the bundled VaptVupt CLI (default 5.2.1) and libvuptsdk-2.0.
+(VaptVupt is the project formerly named Zupt — the `.zupt` archive format
+and extension are unchanged; VAPTVUPT_* env vars are preferred but the
+legacy ZUPT_* names still work.)
 Exposes:
-  POST  /keygen         legacy ML-KEM-768 + X25519 keypair (zupt keygen)
-  POST  /keygen-sdk     SDK v2 keypair (HKDF + key commitment + Argon2id)
-  POST  /compress       file → .zupt; supports password, --pq, --pq-sdk, --dedup
-  POST  /extract        .zupt → file; supports password, --pq, --pq-sdk
-  POST  /test-archive   integrity verify
-  GET   /version        zupt CLI version (cached)
-  GET   /healthz        liveness probe (no CLI call, no auth, no rate limit)
+  POST  /keygen          hybrid ML-KEM-768 + X25519 keypair (vaptvupt keygen)
+  POST  /keygen-sdk      SDK v2 keypair (HKDF + key commitment + Argon2id)
+  POST  /keygen-pqonly   FULL post-quantum keypair (ML-KEM-768 only, --pq-only)
+  POST  /compress        file → .zupt; password, --pq, --pq-only, --pq-sdk, --dedup
+  POST  /extract         .zupt → file; password, --pq, --pq-only, --pq-sdk
+  POST  /test-archive    integrity verify
+  POST  /info            archive header inspection (no credential required)
+  GET   /version         vaptvupt CLI version (cached)
+  GET   /healthz         liveness probe (no CLI call, no auth, no rate limit)
   GET   /download-key/<job>/<type>
 """
 import os, sys, time, uuid, hmac, shutil, secrets, subprocess, tempfile
@@ -28,22 +33,33 @@ from collections import defaultdict
 from flask import (Flask, request, jsonify, send_file, render_template,
                    make_response, abort, g)
 
+APP_VERSION = '5.2.1'   # tracks the bundled VaptVupt CLI version
+
+
+def env(name, default=None):
+    """Read VAPTVUPT_<name>, falling back to the legacy ZUPT_<name>."""
+    v = os.environ.get('VAPTVUPT_' + name)
+    if v is None:
+        v = os.environ.get('ZUPT_' + name)
+    return default if v is None else v
+
+
 app = Flask(__name__)
-app.secret_key = os.environ.get('ZUPT_SECRET_KEY', secrets.token_hex(32))
+app.secret_key = env('SECRET_KEY', secrets.token_hex(32))
 
 # ─── Config ───
-# Upload size cap. Override via ZUPT_MAX_UPLOAD_MB env var.
+# Upload size cap. Override via VAPTVUPT_MAX_UPLOAD_MB env var.
 # Default: 2 GiB.
-MAX_UPLOAD_MB = int(os.environ.get('ZUPT_MAX_UPLOAD_MB', '2048'))
+MAX_UPLOAD_MB = int(env('MAX_UPLOAD_MB', '2048'))
 app.config['MAX_CONTENT_LENGTH'] = MAX_UPLOAD_MB * 1024 * 1024
 
-WORKDIR  = Path(os.environ.get('ZUPT_WORKDIR', '/tmp/zupt-work'))
+WORKDIR  = Path(env('WORKDIR', '/tmp/vaptvupt-work'))
 WORKDIR.mkdir(parents=True, exist_ok=True)
 
-ZUPT_BIN = os.environ.get('ZUPT_BIN', '/usr/local/bin/zupt')
-MAX_KEY_AGE = int(os.environ.get('ZUPT_KEY_TTL_SEC', str(3600 * 4)))
-COMPRESS_TIMEOUT = int(os.environ.get('ZUPT_COMPRESS_TIMEOUT', '600'))
-EXTRACT_TIMEOUT  = int(os.environ.get('ZUPT_EXTRACT_TIMEOUT',  '600'))
+VAPTVUPT_BIN = env('BIN', '/usr/local/bin/vaptvupt')
+MAX_KEY_AGE = int(env('KEY_TTL_SEC', str(3600 * 4)))
+COMPRESS_TIMEOUT = int(env('COMPRESS_TIMEOUT', '600'))
+EXTRACT_TIMEOUT  = int(env('EXTRACT_TIMEOUT',  '600'))
 
 
 # ─── Rate limiting (in-process; fine for single-host deployment) ───
@@ -147,11 +163,11 @@ def safe_filename(name):
     return ''.join(c for c in name if c.isalnum() or c in '.-_')[:128] or 'file'
 
 
-def run_zupt(args, timeout=600, input_data=None):
-    """Run the zupt CLI. Always uses argv (never shell). Returns
+def run_vaptvupt(args, timeout=600, input_data=None):
+    """Run the vaptvupt CLI. Always uses argv (never shell). Returns
     (returncode, stdout, stderr). Caller is responsible for cleaning
     secrets out of the returned strings before logging or rendering."""
-    cmd = [ZUPT_BIN] + list(args)
+    cmd = [VAPTVUPT_BIN] + list(args)
     try:
         r = subprocess.run(cmd, capture_output=True, text=True,
                            timeout=timeout, input=input_data)
@@ -159,7 +175,7 @@ def run_zupt(args, timeout=600, input_data=None):
     except subprocess.TimeoutExpired:
         return -1, '', f'Operation timed out after {timeout}s'
     except FileNotFoundError:
-        return -1, '', f'zupt binary not found at {ZUPT_BIN}'
+        return -1, '', f'vaptvupt binary not found at {VAPTVUPT_BIN}'
 
 
 def scrub(text, *secrets_to_remove):
@@ -181,8 +197,8 @@ _VERSION_CACHE = None
 def cli_version():
     global _VERSION_CACHE
     if _VERSION_CACHE is None:
-        code, out, _ = run_zupt(['version'], timeout=5)
-        _VERSION_CACHE = out.strip().split('\n')[0] if code == 0 else 'zupt (offline)'
+        code, out, _ = run_vaptvupt(['version'], timeout=5)
+        _VERSION_CACHE = out.strip().split('\n')[0] if code == 0 else 'vaptvupt (offline)'
     return _VERSION_CACHE
 
 
@@ -192,7 +208,8 @@ def cli_version():
 def healthz():
     """Liveness probe. No CLI call, no auth, no rate limit. The CLI's
     presence is verified once at startup via cli_version()'s cache."""
-    return jsonify({'ok': True, 'service': 'zupt-web', 'version': '2.2.3'}), 200
+    return jsonify({'ok': True, 'service': 'vaptvupt-web',
+                    'version': APP_VERSION}), 200
 
 
 @app.route('/', methods=['GET'])
@@ -211,40 +228,39 @@ def version():
 @app.route('/keygen', methods=['POST'])
 @rate_limit(10, 60)
 def keygen():
-    """Legacy ML-KEM-768 + X25519 keypair (`zupt keygen`).
-    Produces private.key + public.key in the job dir."""
+    """Hybrid ML-KEM-768 + X25519 keypair (`vaptvupt keygen`).
+    Produces private.key + public.key in the job dir. Use with --pq."""
     job_id = uuid.uuid4().hex[:12]
     d = job_dir(job_id)
     priv = d / 'private.key'
     pub  = d / 'public.key'
 
-    code, _, err = run_zupt(['keygen', '-o', str(priv)])
+    code, _, err = run_vaptvupt(['keygen', '-o', str(priv)])
     if code != 0:
         return render_template('result.html', success=False,
                                message=f'Key generation failed: {err}')
 
-    code2, _, err2 = run_zupt(['keygen', '--pub', '-o', str(pub), '-k', str(priv)])
+    code2, _, err2 = run_vaptvupt(['keygen', '--pub', '-o', str(pub), '-k', str(priv)])
     if code2 != 0:
         return render_template('result.html', success=False,
                                message=f'Public key export failed: {err2}')
 
     return render_template('keygen_result.html', job_id=job_id,
-                           log=err + err2, csrf_token=g.csrf_token,
-                           key_kind='legacy')
+                           log=err + err2, key_kind='legacy')
 
 
 @app.route('/keygen-sdk', methods=['POST'])
 @rate_limit(10, 60)
 def keygen_sdk():
-    """SDK v2 keypair (`zupt keygen --sdk`). Produces private.key
+    """SDK v2 keypair (`vaptvupt keygen --sdk`). Produces private.key
     AND private.key.pub in one shot, with HKDF-SHA3-256 combiner +
     key commitment + HPKE binding + Argon2id at the wrap step.
-    Recommended for new archives — see Zupt 2.2.3 CHANGELOG."""
+    Recommended for new archives — see VaptVupt CHANGELOG."""
     job_id = uuid.uuid4().hex[:12]
     d = job_dir(job_id)
     priv = d / 'private.key'
 
-    code, _, err = run_zupt(['keygen', '--sdk', '-o', str(priv)])
+    code, _, err = run_vaptvupt(['keygen', '--sdk', '-o', str(priv)])
     if code != 0:
         return render_template('result.html', success=False,
                                message=f'SDK key generation failed: {err}')
@@ -255,8 +271,33 @@ def keygen_sdk():
                                message='SDK keygen succeeded but public key was not produced')
 
     return render_template('keygen_result.html', job_id=job_id,
-                           log=err, csrf_token=g.csrf_token,
-                           key_kind='sdk')
+                           log=err, key_kind='sdk')
+
+
+@app.route('/keygen-pqonly', methods=['POST'])
+@rate_limit(10, 60)
+def keygen_pqonly():
+    """FULL post-quantum keypair (`vaptvupt keygen --pq-only`):
+    ML-KEM-768 only, no classical X25519 layer. Use with --pq-only.
+    Available since VaptVupt 4.2.0."""
+    job_id = uuid.uuid4().hex[:12]
+    d = job_dir(job_id)
+    priv = d / 'private.key'
+    pub  = d / 'public.key'
+
+    code, _, err = run_vaptvupt(['keygen', '--pq-only', '-o', str(priv)])
+    if code != 0:
+        return render_template('result.html', success=False,
+                               message=f'Full-PQ key generation failed: {err}')
+
+    code2, _, err2 = run_vaptvupt(['keygen', '--pub', '--pq-only',
+                                   '-o', str(pub), '-k', str(priv)])
+    if code2 != 0:
+        return render_template('result.html', success=False,
+                               message=f'Public key export failed: {err2}')
+
+    return render_template('keygen_result.html', job_id=job_id,
+                           log=err + err2, key_kind='pqonly')
 
 
 @app.route('/download-key/<job_id>/<key_type>', methods=['GET'])
@@ -266,16 +307,16 @@ def download_key(job_id, key_type):
 
     safe_id = ''.join(c for c in job_id if c.isalnum())[:16]
     if key_type == 'private':
-        # Both legacy and SDK paths write private.key
+        # All keygen paths write private.key
         path = WORKDIR / safe_id / 'private.key'
-        download_name = 'zupt_private.key'
+        download_name = 'vaptvupt_private.key'
     else:
-        # Legacy writes public.key; SDK writes private.key.pub.
-        # Try SDK first, fall back to legacy.
+        # Legacy/pq-only write public.key; SDK writes private.key.pub.
+        # Try SDK first, fall back to the others.
         sdk = WORKDIR / safe_id / 'private.key.pub'
         legacy = WORKDIR / safe_id / 'public.key'
         path = sdk if sdk.exists() else legacy
-        download_name = 'zupt_public.key'
+        download_name = 'vaptvupt_public.key'
 
     if not path.exists() or not path.is_file():
         abort(404)
@@ -284,6 +325,44 @@ def download_key(job_id, key_type):
     except ValueError:
         abort(403)
     return send_file(path, as_attachment=True, download_name=download_name)
+
+
+def _password_error(raw, stripped):
+    """Reject passwords the CLI cannot receive safely via '-p <pw>':
+    whitespace-only (would silently produce an UNENCRYPTED archive) and
+    leading '-' (the CLI's parser treats the value as an option and may
+    quote the password back in its error output)."""
+    if raw and not stripped:
+        return 'Password is only whitespace — archive would NOT be encrypted'
+    if stripped.startswith('-'):
+        return "Password may not start with '-'"
+    return None
+
+
+def _key_dir(d):
+    """Uploaded key files go in a subdirectory so a source file that
+    happens to be named 'upload_pub.key' (etc.) can never be
+    overwritten by the key save."""
+    kd = d / 'keys'
+    kd.mkdir(exist_ok=True)
+    return kd
+
+
+def _enc_selection(form, files):
+    """Return (password, pq_key, pq_only_key, sdk_key, n_modes, error)
+    from a compress/extract form. The four encryption modes are
+    mutually exclusive."""
+    raw = form.get('password') or ''
+    pw = raw.strip()
+    pq_key   = files.get('pq_key')
+    pqo_key  = files.get('pq_only_key')
+    sdk_key  = files.get('pq_sdk_key')
+    n = sum(bool(x) for x in
+            (pw,
+             pq_key and pq_key.filename,
+             pqo_key and pqo_key.filename,
+             sdk_key and sdk_key.filename))
+    return pw, pq_key, pqo_key, sdk_key, n, _password_error(raw, pw)
 
 
 @app.route('/compress', methods=['POST'])
@@ -300,7 +379,9 @@ def compress():
     job_id = uuid.uuid4().hex[:12]
     d = job_dir(job_id)
     fname = safe_filename(f.filename)
-    src = d / fname
+    src_dir = d / 'in'
+    src_dir.mkdir(exist_ok=True)
+    src = src_dir / fname
     out = d / f'{fname}.zupt'
     f.save(str(src))
 
@@ -325,34 +406,37 @@ def compress():
     if request.form.get('solid') == 'on':
         cmd += ['--solid']
 
-    # Block-level deduplication (Zupt 2.1.5+)
+    # Block-level deduplication
     if request.form.get('dedup') == 'on':
         cmd += ['--dedup']
 
-    # Encryption: password XOR --pq XOR --pq-sdk (mutually exclusive)
-    pw = (request.form.get('password') or '').strip()
-    pq_key  = request.files.get('pq_key')
-    sdk_key = request.files.get('pq_sdk_key')
-
-    enc_modes = sum(bool(x) for x in
-                    (pw, pq_key and pq_key.filename, sdk_key and sdk_key.filename))
+    # Encryption: password XOR --pq XOR --pq-only XOR --pq-sdk
+    pw, pq_key, pqo_key, sdk_key, enc_modes, pw_err = \
+        _enc_selection(request.form, request.files)
+    if pw_err:
+        return render_template('result.html', success=False, message=pw_err)
     if enc_modes > 1:
         return render_template('result.html', success=False,
-                               message='Choose ONE of: password, --pq key, --pq-sdk key')
+                               message='Choose ONE of: password, --pq key, '
+                                       '--pq-only key, --pq-sdk key')
 
     if pw:
         cmd += ['-p', pw]
     elif pq_key and pq_key.filename:
-        key_path = d / 'upload_pub.key'
+        key_path = _key_dir(d) / 'upload_pub.key'
         pq_key.save(str(key_path))
         cmd += ['--pq', str(key_path)]
+    elif pqo_key and pqo_key.filename:
+        key_path = _key_dir(d) / 'upload_pqonly_pub.key'
+        pqo_key.save(str(key_path))
+        cmd += ['--pq-only', str(key_path)]
     elif sdk_key and sdk_key.filename:
-        key_path = d / 'upload_sdk_pub.key'
+        key_path = _key_dir(d) / 'upload_sdk_pub.key'
         sdk_key.save(str(key_path))
         cmd += ['--pq-sdk', str(key_path)]
 
     cmd += [str(out), str(src)]
-    code, stdout, stderr = run_zupt(cmd, timeout=COMPRESS_TIMEOUT)
+    code, stdout, stderr = run_vaptvupt(cmd, timeout=COMPRESS_TIMEOUT)
 
     # Scrub the password out of any quoted-back error string
     stderr = scrub(stderr, pw)
@@ -379,36 +463,41 @@ def extract():
 
     job_id = uuid.uuid4().hex[:12]
     d = job_dir(job_id)
-    arc = d / safe_filename(f.filename)
+    arc_dir = d / 'in'
+    arc_dir.mkdir(exist_ok=True)
+    arc = arc_dir / safe_filename(f.filename)
     outdir = d / 'extracted'
     outdir.mkdir()
     f.save(str(arc))
 
     cmd = ['extract', '-o', str(outdir)]
 
-    pw = (request.form.get('password') or '').strip()
-    pq_key  = request.files.get('pq_key')
-    sdk_key = request.files.get('pq_sdk_key')
-
-    enc_modes = sum(bool(x) for x in
-                    (pw, pq_key and pq_key.filename, sdk_key and sdk_key.filename))
+    pw, pq_key, pqo_key, sdk_key, enc_modes, pw_err = \
+        _enc_selection(request.form, request.files)
+    if pw_err:
+        return render_template('result.html', success=False, message=pw_err)
     if enc_modes > 1:
         return render_template('result.html', success=False,
-                               message='Choose ONE of: password, --pq key, --pq-sdk key')
+                               message='Choose ONE of: password, --pq key, '
+                                       '--pq-only key, --pq-sdk key')
 
     if pw:
         cmd += ['-p', pw]
     elif pq_key and pq_key.filename:
-        key_path = d / 'upload_priv.key'
+        key_path = _key_dir(d) / 'upload_priv.key'
         pq_key.save(str(key_path))
         cmd += ['--pq', str(key_path)]
+    elif pqo_key and pqo_key.filename:
+        key_path = _key_dir(d) / 'upload_pqonly_priv.key'
+        pqo_key.save(str(key_path))
+        cmd += ['--pq-only', str(key_path)]
     elif sdk_key and sdk_key.filename:
-        key_path = d / 'upload_sdk_priv.key'
+        key_path = _key_dir(d) / 'upload_sdk_priv.key'
         sdk_key.save(str(key_path))
         cmd += ['--pq-sdk', str(key_path)]
 
     cmd += [str(arc)]
-    code, stdout, stderr = run_zupt(cmd, timeout=EXTRACT_TIMEOUT)
+    code, stdout, stderr = run_vaptvupt(cmd, timeout=EXTRACT_TIMEOUT)
 
     stderr = scrub(stderr, pw)
     stdout = scrub(stdout, pw)
@@ -440,22 +529,57 @@ def test_archive():
         return render_template('result.html', success=False,
                                message='No archive uploaded')
     f = request.files['archive']
+    if not f.filename:
+        return render_template('result.html', success=False,
+                               message='Empty filename')
     job_id = uuid.uuid4().hex[:12]
     d = job_dir(job_id)
     arc = d / safe_filename(f.filename)
     f.save(str(arc))
 
     cmd = ['test']
-    pw = (request.form.get('password') or '').strip()
+    raw_pw = request.form.get('password') or ''
+    pw = raw_pw.strip()
+    pw_err = _password_error(raw_pw, pw)
+    if pw_err:
+        shutil.rmtree(d, ignore_errors=True)
+        return render_template('result.html', success=False, message=pw_err)
     if pw:
         cmd += ['-p', pw]
     cmd += [str(arc)]
 
-    code, stdout, stderr = run_zupt(cmd, timeout=EXTRACT_TIMEOUT)
+    code, stdout, stderr = run_vaptvupt(cmd, timeout=EXTRACT_TIMEOUT)
     shutil.rmtree(d, ignore_errors=True)
 
     msg = scrub(stderr + stdout, pw)
     return render_template('result.html', success=(code == 0), message=msg)
+
+
+@app.route('/info', methods=['POST'])
+@rate_limit(30, 60)
+def info():
+    """Archive header inspection (`vaptvupt info`). Reads the header
+    only — reports codec, encryption mode (password / hybrid PQ /
+    full PQ / SDK), block count. No password or key required. This is
+    the same header detection the 5.2.1 GUI uses to auto-pick the
+    right decrypt mode."""
+    if 'archive' not in request.files:
+        return render_template('result.html', success=False,
+                               message='No archive uploaded')
+    f = request.files['archive']
+    if not f.filename:
+        return render_template('result.html', success=False,
+                               message='Empty filename')
+    job_id = uuid.uuid4().hex[:12]
+    d = job_dir(job_id)
+    arc = d / safe_filename(f.filename)
+    f.save(str(arc))
+
+    code, stdout, stderr = run_vaptvupt(['info', str(arc)], timeout=60)
+    shutil.rmtree(d, ignore_errors=True)
+
+    return render_template('result.html', success=(code == 0),
+                           message=(stderr + stdout))
 
 
 # ─── Entry point ───
