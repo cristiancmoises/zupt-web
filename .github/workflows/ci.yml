@@ -1,0 +1,108 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  web:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
+        with:
+          python-version: '3.12'
+          cache: pip
+      - name: Install hash-locked runtime dependencies
+        run: python -m pip install --require-hashes -r requirements.txt
+      - name: Unit and route tests
+        run: python -m unittest discover -s tests -v
+      - name: Static syntax and shell checks
+        run: |
+          python -m py_compile app.py tests/test_app.py tests/live_smoke.py
+          shellcheck setup.sh build-zupt.sh
+          bash -n setup.sh
+          sh -n build-zupt.sh
+      - name: Validate Compose model
+        run: docker compose config --quiet
+
+  bundled-zupt:
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: zupt-5.2.8
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          persist-credentials: false
+      - name: Install source-audit toolchain
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential file libarchive-tools python3 unzip
+      - name: Verify source-only boundary
+        run: |
+          sha256sum --check --strict ../zupt-5.2.8.SHA256SUMS
+          bash scripts/check-source-only.sh --tree .
+      - name: Build and run downstream gate
+        run: |
+          make clean
+          make -j2 WITH_SDK=0 WITH_PQBOX=0 V=1
+          make WITH_SDK=0 WITH_PQBOX=0 check
+      - name: Run extended and in-tree SDK tests
+        run: |
+          make WITH_SDK=0 WITH_PQBOX=0 test-all
+          make sdk-test
+          make audit-licenses
+      - name: Execute sanitizer smoke
+        run: make WITH_SDK=0 WITH_PQBOX=0 test-asan-run
+      - name: Test installed-file contract
+        run: bash scripts/test-installed-zupt.sh ./zupt
+
+  image:
+    needs: [web, bundled-zupt]
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          persist-credentials: false
+      - name: Build the release image
+        run: docker build --tag zupt-web:5.2.8 .
+      - name: Verify final-image inventory
+        run: |
+          docker run --rm zupt-web:5.2.8 zupt version
+          test "$(docker run --rm --entrypoint id zupt-web:5.2.8 -u)" = 1001
+          if docker run --rm --entrypoint sh zupt-web:5.2.8 -c 'command -v pip || command -v gcc'; then
+            echo 'forbidden build tool found in runtime image' >&2
+            exit 1
+          fi
+      - name: Live HTTP route and crypto-mode matrix
+        run: |
+          docker run --detach --name zupt-web-ci \
+            --read-only --cap-drop ALL --security-opt no-new-privileges \
+            --memory 4g --pids-limit 256 \
+            --tmpfs /tmp/zupt-work:size=2G,mode=700,uid=1001,gid=1001 \
+            --publish 127.0.0.1:8181:8080 zupt-web:5.2.8
+          trap 'docker logs zupt-web-ci; docker rm --force zupt-web-ci' EXIT
+          for attempt in $(seq 1 60); do
+            if curl --fail --silent http://127.0.0.1:8181/healthz >/dev/null; then
+              break
+            fi
+            test "$attempt" -lt 60
+            sleep 1
+          done
+          python3 tests/live_smoke.py
+          job_count=$(docker exec zupt-web-ci sh -c \
+            'find /tmp/zupt-work -mindepth 1 -maxdepth 1 -type d | wc -l')
+          test "$job_count" = 2

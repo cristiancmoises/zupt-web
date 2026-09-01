@@ -7,29 +7,37 @@
 # Logs:   docker compose logs -f
 # Open:   http://localhost:8181
 services:
-  vaptvupt:
+  zupt:
     build:
       context: .
-      network: host
-    image: vaptvupt-web:5.2.1
-    container_name: vaptvupt-web
+    image: zupt-web:5.2.8
+    container_name: zupt-web
     pull_policy: build       # never try to pull from a registry; build locally
     ports:
-      - "8181:8080"
+      - "${BIND_HOST:-127.0.0.1}:${PORT_HOST:-8181}:8080"
+    environment:
+      ZUPT_MAX_UPLOAD_MB: "${ZUPT_MAX_UPLOAD_MB:-${VAPTVUPT_MAX_UPLOAD_MB:-512}}"
+      ZUPT_KEY_TTL_SEC: "${ZUPT_KEY_TTL_SEC:-${VAPTVUPT_KEY_TTL_SEC:-14400}}"
+      ZUPT_COMPRESS_TIMEOUT: "${ZUPT_COMPRESS_TIMEOUT:-${VAPTVUPT_COMPRESS_TIMEOUT:-600}}"
+      ZUPT_EXTRACT_TIMEOUT: "${ZUPT_EXTRACT_TIMEOUT:-${VAPTVUPT_EXTRACT_TIMEOUT:-600}}"
+      ZUPT_SECRET_KEY: "${ZUPT_SECRET_KEY:-${VAPTVUPT_SECRET_KEY:-}}"
     restart: unless-stopped
 
     # ─── Security ───
     # Practical defence-in-depth: the Python app is already run as
-    # uid 1001 (vaptvupt) inside the container, so privilege escalation
+    # uid 1001 (zupt) inside the container, so privilege escalation
     # via container processes requires both a kernel exploit and a
     # capability that no-new-privileges blocks.
     security_opt:
       - no-new-privileges:true
+    cap_drop:
+      - ALL
+    read_only: true
 
     # tmpfs for the work dir so compress jobs never touch the container's
     # writable layer (faster, and makes job cleanup atomic on restart).
     tmpfs:
-      - /tmp/vaptvupt-work:size=2G,mode=700,uid=1001,gid=1001
+      - /tmp/zupt-work:size=2G,mode=700,uid=1001,gid=1001
 
     # ─── Resource limits ───
     # CPU is unconstrained by default — compression scales naturally
@@ -43,6 +51,7 @@ services:
         limits:
           # cpus: "4.0"
           memory: 4G
+          pids: 256
         reservations:
           memory: 256M
 
@@ -54,7 +63,7 @@ services:
         max-file: "3"
 
     healthcheck:
-      test: ["CMD", "curl", "-sf", "http://127.0.0.1:8080/healthz"]
+      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/healthz', timeout=3).read()"]
       interval: 30s
       timeout: 5s
       start_period: 5s

@@ -2,16 +2,15 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>{{ 'Success' if success else 'Error' }} — VaptVupt</title>
+<title>{{ 'Success' if success else 'Error' }} — ZUPT</title>
 <link rel="icon" type="image/png" href="/static/favicon.png">
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=DM+Sans:wght@400;600;700&display=swap" rel="stylesheet">
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
-body{background:#000;color:#c4dde8;font:15px/1.65 'DM Sans',system-ui,sans-serif;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px}
+body{background:#000;color:#c4dde8;font:15px/1.65 system-ui,sans-serif;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px}
 .box{background:#070c14;border-radius:16px;padding:40px;width:100%;max-width:600px;border:1px solid {{ 'rgba(0,232,122,.14)' if success else 'rgba(255,50,96,.14)' }};box-shadow:0 0 30px {{ 'rgba(0,232,122,.04)' if success else 'rgba(255,50,96,.04)' }}}
-h1{font:700 20px 'DM Sans',sans-serif;color:#fff;margin-bottom:14px;display:flex;align-items:center;gap:10px}
-.msg{font:12px 'IBM Plex Mono',monospace;color:#6890a0;padding:18px 20px;background:rgba(0,0,0,.5);border-radius:12px;line-height:1.8;white-space:pre-wrap;max-height:350px;overflow-y:auto;border:1px solid rgba(0,255,255,.04)}
-a.back{display:inline-flex;align-items:center;gap:6px;padding:10px 20px;border-radius:8px;font:600 12px 'DM Sans',sans-serif;text-decoration:none;margin-top:22px;text-transform:uppercase;letter-spacing:.5px;color:#6890a0;border:1px solid rgba(0,255,255,.07)}
+h1{font:700 20px system-ui,sans-serif;color:#fff;margin-bottom:14px;display:flex;align-items:center;gap:10px}
+.msg{font:12px ui-monospace,monospace;color:#6890a0;padding:18px 20px;background:rgba(0,0,0,.5);border-radius:12px;line-height:1.8;white-space:pre-wrap;max-height:350px;overflow-y:auto;border:1px solid rgba(0,255,255,.04)}
+a.back{display:inline-flex;align-items:center;gap:6px;padding:10px 20px;border-radius:8px;font:600 12px system-ui,sans-serif;text-decoration:none;margin-top:22px;text-transform:uppercase;letter-spacing:.5px;color:#6890a0;border:1px solid rgba(0,255,255,.07)}
 a.back:hover{border-color:#08b;color:#c4dde8;text-decoration:none}
 @media(max-width:500px){.box{padding:24px 18px}}
 </style>

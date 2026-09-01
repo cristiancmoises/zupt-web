@@ -1,0 +1,31 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+# Source-tree launcher for ZUPT GUI.
+# It performs no package installation and never downloads dependencies.
+set -Eeuo pipefail
+
+script_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)
+gui=$script_dir/src/zupt_gui.py
+[[ -f $gui ]] || {
+    printf 'zupt-gui: GUI source is missing: %s\n' "$gui" >&2
+    exit 1
+}
+
+if [[ -z ${ZUPT_BIN:-} ]]; then
+    if [[ -n ${VAPTVUPT_BIN:-} ]]; then
+        export ZUPT_BIN=$VAPTVUPT_BIN
+    elif [[ -x $script_dir/../zupt ]]; then
+        export ZUPT_BIN=$script_dir/../zupt
+    elif command -v zupt >/dev/null 2>&1; then
+        ZUPT_BIN=$(command -v zupt)
+        export ZUPT_BIN
+    elif [[ -x $script_dir/../vaptvupt ]]; then
+        export ZUPT_BIN=$script_dir/../vaptvupt
+    elif command -v vaptvupt >/dev/null 2>&1; then
+        ZUPT_BIN=$(command -v vaptvupt)
+        export ZUPT_BIN
+    fi
+fi
+
+exec python3 "$gui" "$@"

@@ -1,0 +1,12 @@
+Package: zupt-gui
+Version: 5.2.8
+Section: utils
+Priority: optional
+Architecture: all
+Depends: python3 (>= 3.9), python3-pyqt6 | python3-pyside6.qtwidgets, zupt (= 5.2.8)
+Maintainer: Cristian Cezar Moisés <sac@securityops.co>
+Homepage: https://github.com/cristiancmoises/zupt
+Description: Qt graphical interface for the ZUPT backup utility
+ The GUI creates, inspects, verifies, and extracts .zupt archives through the
+ separately packaged ZUPT command. Native post-quantum modes are available
+ in the baseline build; SDK and PQ-box controls follow CLI capability detection.

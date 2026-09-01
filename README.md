@@ -1,242 +1,216 @@
-# VaptVupt Web — Post-Quantum Backup in Your Browser
+# ZUPT Web — Post-Quantum Backup in Your Browser
 
-**Encrypt, compress, and protect files with quantum-resistant cryptography — from any browser.**
+ZUPT Web is a self-hosted browser frontend for the ZUPT backup archiver. It
+compresses, encrypts, verifies, inspects, and extracts `.zupt` archives without
+accounts or cloud storage.
 
-One-command deploy. No accounts. No cloud. Your keys, your data, your server.
+This release bundles the immutable **ZUPT 5.2.8** source release with the
+**VaptVupt 2.65.3** compression codec. ZUPT 5.2.2 restored the product's
+original name after releases 3.0.0–5.2.1 used VaptVupt; the archive extension
+and format v1.6 did not change.
 
 ```bash
-docker compose up -d
-# → http://localhost:8181
+docker compose up -d --build
+# http://localhost:8181
 ```
 
-This release bundles **VaptVupt CLI 5.2.1** (with **VaptVupt 2.65.3** codec and **libvuptsdk 2.0.0**). See [CHANGELOG of bundled vaptvupt](vaptvupt-5.2.1/CHANGELOG.md) for the full list of changes.
+## Important upgrade note
 
-> **Renamed from "Zupt-Web"** together with the CLI's v3.0.0 rename, because of
-> a prior INPI Brasil trademark registration on the name "Zupt" for unrelated
-> software. The `.zupt` archive extension and container format (v1.6) are
-> **unchanged**. One documented exception to cross-version compatibility:
-> CLI v5.0.0 switched `--pq`/`--pq-only` to genuine FIPS 203 ML-KEM-768
-> (a breaking change), so **hybrid/full-PQ encrypted archives and keys made
-> by ≤ 4.2.1 — including all Zupt 2.x — cannot be decrypted by this release**
-> (and vice versa). Password-mode, `--pq-sdk`, and unencrypted archives are
-> unaffected. The `zupt` command remains available inside the container as a
-> symlink to `vaptvupt`, and the legacy `ZUPT_*` environment variables are
-> still honored.
+The official ZUPT 5.2.8 source-only profile deliberately excludes the opaque
+`libvuptsdk` binary used by the old web image. Consequently:
 
----
+- native password, hybrid `--pq`, and full-PQ `--pq-only` workflows are
+  available;
+- new password archives use PBKDF2-SHA256 rather than Argon2id;
+- Argon2id password archives and `--pq-sdk` archives created by the 5.2.1 web
+  image need that release's compatibility reader.
 
-## What's new in 5.2.1
-
-- **Bundled CLI upgraded** — Zupt 2.2.3 → **VaptVupt 5.2.1**: genuine FIPS 203
-  ML-KEM-768 (5.0.0), full post-quantum mode (4.2.0), source-only native build
-  with vendored SDK (4.1.0), codec 2.48.2 → **2.65.3** with large ratio gains
-  (5.1.0: level-9 text 3.77× → 5.98×, JSON 8.25× → 9.38×) and ~1.6–2× faster
-  extreme-mode encode (5.2.0).
-- **Full post-quantum mode in the UI** — new "Full-PQ Keypair" button and
-  `--pq-only` public/private key fields in the compress/extract forms.
-  ML-KEM-768 only, no classical X25519 layer.
-- **Archive header inspection** — new **Inspect** card on the Verify tab
-  (`vaptvupt info`): reports codec, encryption mode (password / hybrid PQ /
-  full PQ / SDK v2), and block count without any credential. The same header
-  detection the 5.2.1 GUI uses to auto-pick the right decrypt mode.
-- **Argon2id password KDF** — the container builds the CLI `WITH_SDK=1`, so
-  password-mode archives use Argon2id (RFC 9106) instead of PBKDF2.
-- **Renamed environment variables** — `VAPTVUPT_MAX_UPLOAD_MB`,
-  `VAPTVUPT_KEY_TTL_SEC`, `VAPTVUPT_BIN`, `VAPTVUPT_WORKDIR`,
-  `VAPTVUPT_SECRET_KEY`, `VAPTVUPT_COMPRESS_TIMEOUT`,
-  `VAPTVUPT_EXTRACT_TIMEOUT`. The legacy `ZUPT_*` names still work as
-  fallbacks.
-- **Repo renamed** — git.securityops.co/cristiancmoises/zupt-web →
-  [vaptvupt-web](https://git.securityops.co/cristiancmoises/vaptvupt-web)
-  (mirrors on [GitHub](https://github.com/cristiancmoises/vaptvupt-web) and
-  [Codeberg](https://codeberg.org/berkeley/vaptvupt-web)).
-
----
+Do not delete your 5.2.1 recovery environment until those archives have been
+restored and re-encrypted with a native mode. See [MIGRATION.md](MIGRATION.md)
+for a safe procedure. ZUPT 5.2.8 can read native `--pq` and `--pq-only`
+archives and keys created by 5.2.1; the reverse direction is not guaranteed.
 
 ## Features
 
-| Feature | Description |
+| Feature | Implementation |
 |---|---|
-| **SDK v2 key generation** | HKDF + key commitment + HPKE binding + Argon2id. `--pq-sdk` workflow |
-| **Hybrid key generation** | ML-KEM-768 + X25519. `--pq` workflow (FIPS 203 since v5.0.0 — keys/archives from ≤ 4.2.1 are incompatible) |
-| **Full-PQ key generation** | ML-KEM-768 only, no classical layer. `--pq-only` workflow |
-| **Compress & encrypt** | Upload files → `.zupt` archive. Password, `--pq`, `--pq-only`, or `--pq-sdk` (mutually exclusive) |
-| **Extract & decrypt** | Upload `.zupt` + key/password → original files returned |
-| **Verify integrity** | Validate every block's XXH64 + HMAC-SHA256 without extracting |
-| **Inspect header** | Codec, encryption mode, block count — no credential required |
-| **Codec selection** | AUTO (hardware-adaptive) · VaptVupt 2.65.3 (AVX2/NEON) · LZHP (universal) · Store |
-| **Block dedup** | XXH64 fingerprint index, eliminates duplicate blocks before compression |
-| **Solid mode** | Cross-file dictionary sharing for higher ratios on similar files |
-| **Levels 1–9** | Fastest to maximum compression ratio |
+| Hybrid post-quantum encryption | ML-KEM-768 + X25519 via `--pq` |
+| Full post-quantum encryption | ML-KEM-768 via `--pq-only` |
+| Password encryption | AES-256-CTR + HMAC-SHA256; PBKDF2-SHA256 |
+| Compression | AUTO, VaptVupt 2.65.3, LZHP, or Store |
+| Archive safety | Authenticated integrity trailer, per-block validation, hardened extraction |
+| Backup options | Levels 1–9, solid mode, or block deduplication |
+| Metadata inspection | Format/trailer, UUID, flags, encryption metadata, sizes, block count |
+| Deployment | Three-stage, non-root, read-only Docker container |
+
+Solid mode and block deduplication are intentionally mutually exclusive in the
+web UI because the upstream solid writer does not perform actual deduplication.
+
+## Deploy
+
+Requirements: Docker Engine and Docker Compose.
+
+```bash
+git clone https://git.securityops.co/cristiancmoises/zupt-web.git
+cd zupt-web
+./setup.sh
+```
+
+`setup.sh` validates Compose, builds the image (including the bundled CLI test
+gate), starts it, and waits for an exact health response. To use another host
+port:
+
+```bash
+PORT_HOST=8282 ./setup.sh
+```
+
+The default bind is loopback-only because the UI accepts passwords and private
+keys. Put it behind an authenticated HTTPS reverse proxy for remote access.
+Set `BIND_HOST=0.0.0.0` only on a trusted LAN or when that TLS/authentication
+boundary is already in place.
+
+Manual deployment:
+
+```bash
+docker compose build
+docker compose up -d
+docker compose ps
+```
+
+## Configuration
+
+`ZUPT_*` variables are canonical. The corresponding `VAPTVUPT_*` names remain
+accepted as compatibility fallbacks for renamed-era deployments.
+
+| Variable | Default | Purpose |
+|---|---:|---|
+| `ZUPT_MAX_UPLOAD_MB` | `512` | Maximum request size in MiB |
+| `ZUPT_KEY_TTL_SEC` | `14400` | Job/key retention time |
+| `ZUPT_SECRET_KEY` | generated at container start | Flask secret |
+| `ZUPT_COMPRESS_TIMEOUT` | `600` | Compression timeout in seconds (1–600) |
+| `ZUPT_EXTRACT_TIMEOUT` | `600` | Extraction/verify timeout in seconds (1–600) |
+
+Example:
+
+```bash
+ZUPT_MAX_UPLOAD_MB=512 ZUPT_KEY_TTL_SEC=1800 docker compose up -d
+```
+
+The supported Compose deployment fixes the CLI at `/usr/local/bin/zupt` and
+the ephemeral work directory at `/tmp/zupt-work` so it stays aligned with the
+read-only filesystem and 2 GiB tmpfs. Custom launchers may use `ZUPT_BIN` and
+`ZUPT_WORKDIR` directly. Compose also maps the corresponding renamed-era
+`VAPTVUPT_*` settings when a canonical value is absent.
+
+## Verify a deployment
+
+```bash
+curl -fsS http://localhost:8181/healthz
+# {"ok":true,"service":"zupt-web","version":"5.2.8"}
+
+curl -fsS http://localhost:8181/version  # CLI readiness; 503 when unavailable
+docker exec zupt-web zupt version
+docker inspect --format '{{.Config.User}} {{.HostConfig.ReadonlyRootfs}}' zupt-web
+```
+
+The canonical executable is `/usr/local/bin/zupt`. A `vaptvupt -> zupt`
+compatibility symlink is retained for scripts written against 3.0.0–5.2.1.
 
 ## Security posture
 
-- **Runs as non-root** in the container (`vaptvupt`, uid 1001) via `USER vaptvupt` in the Dockerfile. There is no `root`-owned process at runtime.
-- **`no-new-privileges`** enabled in `docker-compose.yml` — no path to capability-based or setuid escalation.
-- **CSRF tokens** on every form (double-submit cookie, `hmac.compare_digest` constant-time check).
-- **Rate limiting** — 10 keygen/min, 30 compress·extract·test·info/min per IP.
-- **Tight Content-Security-Policy** set by Flask in `@app.after_request`: `default-src 'none'; script-src 'self' 'unsafe-inline'; …; frame-ancestors 'none'` (the `unsafe-inline` is required because templates are deliberately single-file with inline `<style>` and minimal `<script>`; no separate `.js`/`.css` files are served).
-- **Full security header set** applied by Flask: CSP, X-Frame-Options DENY, X-Content-Type-Options nosniff, X-XSS-Protection, Referrer-Policy, Cross-Origin-Opener-Policy, Cross-Origin-Resource-Policy, Permissions-Policy (camera/mic/geo/payment/USB/interest-cohort revoked).
-- **No `shell=True`** — every subprocess call uses explicit argv.
-- **Path traversal protection** — filenames sanitised, paths verified with `Path.resolve().relative_to(WORKDIR)`.
-- **Password scrubbing** — passwords are stripped from error output before being rendered to the browser.
-- **Keys auto-expire** from the server after 4 h (`VAPTVUPT_KEY_TTL_SEC` env override).
-- **Workdir is a tmpfs** (`/tmp/vaptvupt-work`, uid-mapped to 1001) — compress jobs never touch the container's writable layer.
-- **Container resource limits** — `memory: 4G` in `docker-compose.yml` (defence against runaway compress jobs). CPU is uncapped by default; uncomment the `cpus:` line if your host is shared.
-- **HEALTHCHECK** uses dedicated `/healthz` endpoint — no CLI fork on each probe, no rate-limit consumption, no auth roundtrip.
-- **Audited bundled CLI** — VaptVupt 5.2.1 ships with `make check` 16/16, NIST/RFC KAT 16/16, ML-KEM-768 FIPS 203 conformance 3/3, plus the full security regression matrix (path traversal, block swap, dedup nonce, arg order, decode slack). See [AUDIT.md](vaptvupt-5.2.1/AUDIT.md).
+- Every bundled upstream file is checked against a manifest generated from the
+  verified official ZUPT 5.2.8 release tarball before compilation; the asset's
+  promoted SHA-256 is recorded in [UPSTREAM.md](UPSTREAM.md).
+- The image builds ZUPT with `WITH_SDK=0 WITH_PQBOX=0`, so it contains no
+  opaque SDK/PQBOX binaries and no private build-tree RPATH.
+- Passwords cross the CLI boundary through inherited standard input with
+  `--pass-fd 0`; they never appear in process arguments.
+- Every form uses a constant-time-checked double-submit CSRF token.
+- Uploaded paths are isolated per job and output paths are checked before
+  download or tar creation.
+- Flask sets CSP, clickjacking, MIME-sniffing, referrer, opener/resource, and
+  permissions headers. No third-party font or script request is made.
+- The runtime uses uid 1001, drops every Linux capability, enables
+  `no-new-privileges`, limits PIDs/memory, and has a read-only root filesystem.
+- The final stage contains the minimal Ubuntu runtime packages, tini, the
+  hash-locked application environment, and the audited ZUPT binary.
+  pip/setuptools/wheel and compiler tools do not enter the runtime.
+
+This is defense in depth, not a claim that browser uploads are risk-free. Never
+send credentials to it over untrusted plain HTTP; keep the service private or
+place it behind an authenticated HTTPS reverse proxy.
+
+## Architecture
+
+```text
+Browser
+   │ HTTP :8181
+   ▼
+gunicorn (2 workers, uid 1001)
+   │
+   ▼
+Flask application ── explicit argv + inherited password FD ──▶ ZUPT 5.2.8
+   │                                                         (source-only)
+   ▼
+tmpfs /tmp/zupt-work ── expiring job directories ──▶ streamed download
+```
+
+The app enforces a maximum operation timeout of 600 seconds; gunicorn waits
+660 seconds so Flask can return a controlled timeout page instead of losing
+the worker at the same instant.
+
+## Development and audit
+
+Install the hash-locked Python environment, then run the web tests:
+
+```bash
+python3 -m venv .venv
+.venv/bin/pip install --require-hashes -r requirements.txt
+.venv/bin/python -m unittest discover -s tests -v
+```
+
+Exercise the bundled CLI directly:
+
+```bash
+cd zupt-5.2.8
+bash scripts/check-source-only.sh --tree .
+make clean
+make -j"$(getconf _NPROCESSORS_ONLN 2>/dev/null || printf 1)" \
+  WITH_SDK=0 WITH_PQBOX=0 V=1
+make WITH_SDK=0 WITH_PQBOX=0 check
+make WITH_SDK=0 WITH_PQBOX=0 test-all
+make sdk-test
+make test-asan-run
+```
+
+The official release tar intentionally omits three packaging recipes that are
+present only in the Git checkout, so its `release-check` aggregate is not the
+appropriate embedded-source command. The equivalent applicable gates and all
+release evidence are recorded in [AUDIT.md](AUDIT.md).
 
 ## Screenshots
 
 <p align="center">
-  <img src="screenshots/1.png" width="660" alt="Screenshot 1"><br><br>
-  <img src="screenshots/2.png" width="660" alt="Screenshot 2"><br><br>
-  <img src="screenshots/3.png" width="660" alt="Screenshot 3"><br><br>
-  <img src="screenshots/about.png" width="660" alt="About"><br><br>
-  <img src="screenshots/test.png" width="660" alt="Test">
+  <img src="screenshots/1.png" width="660" alt="ZUPT Web keys"><br><br>
+  <img src="screenshots/2.png" width="660" alt="ZUPT Web compression"><br><br>
+  <img src="screenshots/3.png" width="660" alt="ZUPT Web extraction"><br><br>
+  <img src="screenshots/about.png" width="660" alt="ZUPT Web about">
 </p>
 
-## Comparison
+## Project links
 
-| | **VaptVupt Web** | age + gzip | GPG + tar | Duplicati | BorgBackup |
-|---|---|---|---|---|---|
-| Post-quantum encryption | ML-KEM-768 hybrid **and** full PQ | — | — | — | — |
-| SDK v2 (key commitment + HPKE binding) | ✓ via `--pq-sdk` | — | — | — | — |
-| Block-level dedup | XXH64 fingerprint index | — | — | — | HMAC |
-| Web interface | Self-hosted Docker | CLI | CLI | Web | CLI |
-| Zero deps in codec | Pure C11 (vaptvupt + VV codec) | Go | GnuPG | .NET | Python |
-| Hardware-adaptive codec | AVX2/NEON auto | — | — | — | — |
-| Per-block integrity | XXH64 + HMAC-SHA256 per block | — | Whole-file | — | HMAC |
-| Docker one-command | `docker compose up -d` | — | — | Yes | — |
-
-## Cryptographic stack
-
-| Algorithm | Standard | Purpose |
-|---|---|---|
-| ML-KEM-768 | FIPS 203 | Post-quantum key encapsulation (`--pq` hybrid, `--pq-only` pure) |
-| X25519 | RFC 7748 | Elliptic curve Diffie–Hellman (hybrid layer) |
-| AES-256-CTR | FIPS 197 / NIST SP 800-38A | Symmetric encryption (`--pq`, `-p`) |
-| XChaCha20-Poly1305 | RFC 8439 / draft-irtf-cfrg-xchacha | SDK v2 AEAD (`--pq-sdk` default) |
-| AES-256-SIV | RFC 5297 | SDK v2 nonce-misuse-resistant alternative |
-| HMAC-SHA256 | RFC 2104 | Per-block authentication |
-| HKDF-SHA3-256 | RFC 5869 / FIPS 202 | SDK v2 hybrid combiner |
-| Argon2id | RFC 9106 | Password key derivation (WITH_SDK build — this container) |
-| PBKDF2-SHA256 | RFC 8018 | Password key derivation (source-only builds, 600 K iter) |
-| SHA3 / SHAKE | FIPS 202 | Hybrid key derivation, Keccak |
-
-## Deploy
-
-### Prerequisites
-
-- Docker and Docker Compose
-
-### Quick start
-
-```bash
-git clone https://git.securityops.co/cristiancmoises/vaptvupt-web && cd vaptvupt-web
-docker compose up -d
-```
-
-Open **http://localhost:8181**.
-
-Or grab the packaged release tarball (`vaptvupt-web-5.2.1.tar.gz` from the
-[release page](https://git.securityops.co/cristiancmoises/vaptvupt-web/releases)),
-verify it against `SHA256SUMS`, unpack, and run `./setup.sh` — it checks
-Docker DNS, builds, starts, and verifies the stack in one go.
-
-### Tuning
-
-```bash
-# Cap upload size. Default: 2 GiB.
-# Edit app.py — value in MEGABYTES:
-app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024   # 50 MB
-
-# Or override at runtime via env (no rebuild needed):
-docker run -e VAPTVUPT_MAX_UPLOAD_MB=50 -p 8181:8080 vaptvupt-web:5.2.1
-```
-
-```bash
-# Tighten/relax key TTL on the server (defaults to 4 hours):
-docker run -e VAPTVUPT_KEY_TTL_SEC=900 -p 8181:8080 vaptvupt-web:5.2.1
-```
-
-(The legacy `ZUPT_*` env names still work.)
-
-### Docker DNS fix
-
-If the build fails with `Temporary failure resolving 'archive.ubuntu.com'`:
-
-```bash
-echo '{"dns":["9.9.9.9","1.1.1.1"]}' | sudo tee /etc/docker/daemon.json
-sudo systemctl restart docker
-```
-
-Or run `./setup.sh` — it detects this case automatically.
-
-### Verify
-
-```bash
-curl localhost:8181/healthz   # {"ok": true, "service": "vaptvupt-web", "version": "5.2.1"}
-curl localhost:8181/version   # {"version": "vaptvupt 5.2.1 ...", "ok": true}
-docker exec -t vaptvupt-web vaptvupt version
-```
-
-## Architecture
-
-```
-┌────────────────────────────────────────────────────┐
-│  Browser  ──HTTP──▶  gunicorn  (port 8080, 2 wk) ──┐
-│                                                    │
-│                                              Flask app
-│                                              (sets all
-│                                               security
-│                                               headers,
-│                                               serves
-│                                               /static/)
-│                                                    │
-│                                                    ▼
-│                              /usr/local/bin/vaptvupt
-│                                              │     │
-│                                              ▼     │
-│                              /usr/lib/vaptvupt/    │
-│                              libvuptsdk.so.2       │
-└────────────────────────────────────────────────────┘
-```
-
-- **gunicorn** binds 8080 directly as `vaptvupt` (uid 1001), 2 workers, 660 s worker timeout (deliberately above the app's 600 s CLI timeout so timeout errors render as pages), recycles workers every 1000 ± 100 requests. PID 1 is `tini` for proper signal forwarding and zombie reaping.
-- **Flask app** (`app.py`) serves the UI, accepts uploads, sets all security headers in `@app.after_request`, serves static files from `static/`, and calls the `vaptvupt` CLI via explicit argv (no shell). Streams the result back to the browser.
-- **vaptvupt CLI** (built from the bundled `vaptvupt-5.2.1/` source tree, `WITH_SDK=1`) does the actual compress/encrypt/extract work. Links to **libvuptsdk** via `RUNPATH=/usr/lib/vaptvupt`. A legacy `zupt` symlink is kept for one major version cycle.
-
-## Project family
-
-All maintained by Cristian Cezar Moisés on git.securityops.co:
-
-- [vaptvupt](https://git.securityops.co/cristiancmoises/vaptvupt) — CLI + GUI (this repo bundles a copy of its source)
-- [vaptvupt-web](https://git.securityops.co/cristiancmoises/vaptvupt-web) — this repo
-- [vaptvupt-codec](https://git.securityops.co/cristiancmoises/vaptvupt-codec) — standalone LZ + tANS codec, embedded in vaptvupt
-- [libvuptsdk](https://git.securityops.co/cristiancmoises/libvuptsdk) — C SDK powering `--pq-sdk` + Argon2id password KDF
-
-Mirrors: [GitHub](https://github.com/cristiancmoises/vaptvupt-web) · [Codeberg](https://codeberg.org/berkeley/vaptvupt-web)
+- [ZUPT](https://github.com/cristiancmoises/zupt) — CLI/GUI and bundled source
+- [zupt-web on git.securityops.co](https://git.securityops.co/cristiancmoises/zupt-web)
+- [GitHub mirror](https://github.com/cristiancmoises/zupt-web)
+- [Codeberg mirror](https://codeberg.org/berkeley/zupt-web)
+- [VaptVupt codec](https://git.securityops.co/cristiancmoises/vaptvupt-codec)
 
 ## License
 
-**VaptVupt-Web is licensed under the GNU Affero General Public License v3.0 or later (AGPL-3.0-or-later).**
+ZUPT Web is AGPL-3.0-or-later. The bundled ZUPT source contains separately
+identified AGPL-3.0-or-later, GPL-3.0-or-later, BSD-2-Clause,
+BSD-3-Clause, and CC0-1.0 scopes. Preserve the complete `LICENSE*`, `NOTICE`,
+and `THIRD-PARTY-NOTICES.md` payload when redistributing the image or source.
+See [LICENSE](LICENSE) and `zupt-5.2.8/THIRD-PARTY-NOTICES.md`.
 
-The full license text is in [LICENSE](LICENSE), preceded by a formal preamble explaining the rationale.
-
-- **You can run VaptVupt-Web freely** — for personal use, internal company use, homelab self-hosting, research, or as a tool in your sysadmin workflow. The AGPL imposes essentially no obligations on simple use.
-- **If you operate a modified VaptVupt-Web as a hosted/SaaS service** (a backup-management portal, a cloud archive viewer, a backup-as-a-service frontend, etc.), you MUST make the source code of your modifications available to the users of that service. This is the AGPL's "SaaS clause" and is the entire reason VaptVupt-Web is AGPL rather than GPL or MIT — VaptVupt-Web is by design a network-facing application, the exact deployment shape the AGPL exists to address.
-- **If you redistribute VaptVupt-Web** (modified or not), the AGPL travels with it.
-
-The bundled `vaptvupt-5.2.1/` subdirectory contains the VaptVupt CLI source tree, also licensed under AGPL-3.0-or-later. The integrated VaptVupt 2.65.3 compression codec inside the bundled CLI is licensed under GPL-3.0-or-later (kept in sync with [git.securityops.co/cristiancmoises/vaptvupt-codec](https://git.securityops.co/cristiancmoises/vaptvupt-codec)). The vendored `libvuptsdk.so.2.0.0` shared object is also AGPL-3.0-or-later. GPL-3.0-or-later is two-way compatible with AGPL-3.0-or-later via section 13 of both licenses.
-
-### Commercial licensing
-
-If your intended use is incompatible with the AGPL — for example:
-
-- Operating VaptVupt-Web as a hosted backup-as-a-service product without releasing your modifications
-- Embedding VaptVupt-Web into a closed-source commercial portal or appliance
-- Redistributing VaptVupt-Web as part of a proprietary product
-- Requiring warranty, indemnification, or written terms
-
-**A commercial license is available.** Contact: **sac@securityops.co**
+Commercial licensing inquiries: `sac@securityops.co`.

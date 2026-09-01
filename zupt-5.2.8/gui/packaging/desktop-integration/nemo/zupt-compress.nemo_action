@@ -1,0 +1,8 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+[Nemo Action]
+Name=Compress with ZUPT
+Comment=Create a .zupt archive with ZUPT GUI
+Exec=zupt-gui --compress %F
+Icon-Name=zupt-gui
+Selection=Any
+Extensions=any;
