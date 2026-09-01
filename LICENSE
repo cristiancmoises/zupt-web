@@ -1,115 +1,69 @@
 ================================================================================
-VAPTVUPT-WEB — Browser-Based Frontend for Post-Quantum Backup Operations
+ZUPT-WEB — Browser-Based Frontend for Post-Quantum Backup Operations
 
   Copyright (C) 2026  Cristian Cezar Moisés
   Contact for commercial licensing: sac@securityops.co
 
 ================================================================================
 
-VaptVupt-Web (formerly Zupt-Web; renamed with the CLI's v3.0.0 rename
-because of a prior INPI Brasil trademark registration on the name "Zupt")
-is free software: you can redistribute it and/or modify it under
-the terms of the GNU Affero General Public License as published by the Free
-Software Foundation, either version 3 of the License, or (at your option)
-any later version.
+ZUPT Web is free software: you can redistribute it and/or modify it under the
+terms of the GNU Affero General Public License as published by the Free
+Software Foundation, either version 3 of the License, or (at your option) any
+later version.
 
-VaptVupt-Web is distributed in the hope that it will be useful, but WITHOUT
-ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
-FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Affero General Public
-License for more details.
+ZUPT Web is distributed in the hope that it will be useful, but WITHOUT ANY
+WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+PARTICULAR PURPOSE. See the GNU Affero General Public License for more details.
 
-You should have received a copy of the GNU Affero General Public License
-along with this program.  If not, see <https://www.gnu.org/licenses/>.
+You should have received a copy of the GNU Affero General Public License along
+with this program. If not, see <https://www.gnu.org/licenses/>.
 
 --------------------------------------------------------------------------------
 WHY AGPL-3.0
 --------------------------------------------------------------------------------
 
-This software is licensed under the GNU Affero General Public License v3.0
-(AGPL-3.0-or-later) for one reason: to keep it free for everyone.
-
-VaptVupt-Web is a network-facing application: it runs as a backend service
-that processes user uploads and serves back the results. The AGPL is
-specifically chosen — over the GPL or MIT — because VaptVupt-Web is the
-exact deployment shape that the AGPL exists to address.
-
-Any organization that runs a modified version of VaptVupt-Web as a network
-service (for example, as a hosted backup-as-a-service product, a cloud
-archival portal, an internal-tools backend exposed to non-employees, or
-any other commercial offering accessed over a network) MUST make the
-corresponding source code of their modified version available to the
-users of that service.
-
-If you are an individual, a non-profit, a researcher, a student, a
-sysadmin, a homelab operator, or any business that simply RUNS VaptVupt-Web
-internally for your own use (without redistributing modifications and
-without operating it as a network service for third parties), the AGPL
-imposes essentially no obligations on you. Spin up the Docker stack.
-Encrypt your archives. You're fine.
+ZUPT Web is a network-facing application that processes user uploads and
+returns results. If you operate a modified version as a network service, AGPL
+section 13 requires offering the corresponding source to users of that
+service. Consult the license text below for the complete terms.
 
 --------------------------------------------------------------------------------
 COMMERCIAL LICENSING
 --------------------------------------------------------------------------------
 
-If your intended use is incompatible with the AGPL — for example:
-
-  * You wish to incorporate VaptVupt-Web into a closed-source product,
-    appliance, SaaS portal, or hosted backup-as-a-service offering.
-  * You wish to operate a modified VaptVupt-Web as a hosted service without
-    releasing your modifications to your end users.
-  * You wish to redistribute VaptVupt-Web as part of a proprietary
-    commercial product without the AGPL's source-disclosure obligations.
-  * You require a warranty, indemnification, or written terms that the
-    AGPL does not provide.
-
-A commercial license is available. Please contact:
+Alternative commercial licensing is available for uses that are incompatible
+with AGPL-3.0-or-later. Contact:
 
     sac@securityops.co
-
-Commercial licensing terms, pricing, and the scope of the granted rights
-are negotiated case-by-case. The author retains full copyright ownership
-of all original VaptVupt-Web source code and is therefore able to grant
-alternative licensing terms.
 
 --------------------------------------------------------------------------------
 BUNDLED COMPONENTS
 --------------------------------------------------------------------------------
 
-This release of VaptVupt-Web bundles three components, each with its own
-license. All are compatible with AGPL-3.0-or-later.
+This release bundles the official `zupt-5.2.8/` source release. Its licensing
+is file-scoped and documented by SPDX markers plus the complete payload in:
 
-  * `vaptvupt-5.2.1/`               — VaptVupt CLI source tree
-                                       AGPL-3.0-or-later
-                                       Most files in this subdirectory.
+  * zupt-5.2.8/LICENSE
+  * zupt-5.2.8/LICENSE-AGPL-3.0
+  * zupt-5.2.8/LICENSE-GPL-3.0
+  * zupt-5.2.8/LICENSE-BSD-2-Clause
+  * zupt-5.2.8/LICENSE-BSD-3-Clause
+  * zupt-5.2.8/LICENSE-CC0-1.0
+  * zupt-5.2.8/NOTICE
+  * zupt-5.2.8/THIRD-PARTY-NOTICES.md
 
-  * `vaptvupt-5.2.1/src/vv_*.c`,    — VaptVupt 2.65.3 compression codec
-    `vaptvupt-5.2.1/src/vaptvupt_api.c`,  GPL-3.0-or-later
-    `vaptvupt-5.2.1/include/vv_*.h`,      (Two-way compatible with AGPL-3.0
-    `vaptvupt-5.2.1/include/vaptvupt*.h`   via section 13 of both licenses.
-                                        Deliberately GPL — not AGPL — so
-                                        the codec can eventually be
-                                        considered for upstreaming into
-                                        the Linux/BSD kernels which
-                                        require GPL-compatible licensing.)
+Most ZUPT application files are AGPL-3.0-or-later. The embedded VaptVupt
+compression-codec files are GPL-3.0-or-later, with a separately identified
+BSD-2-Clause xxHash-derived portion. ML-KEM and X25519 contain separately
+identified CC0-1.0 and BSD-3-Clause portions. See the bundled notices for the
+exact per-file scope.
 
-  * `vaptvupt-5.2.1/vendor/vuptsdk/ — libvuptsdk 2.0.0 shared library
-       libvuptsdk.so.2.0.0`            AGPL-3.0-or-later
-                                       Powers `--pq-sdk` + the Argon2id
-                                       password KDF: HKDF-SHA3-256
-                                       combiner, key commitment, HPKE
-                                       binding, AEAD wrappers.
+No opaque libvuptsdk or libpqvaptvupt artifact is bundled or linked. The
+container builds ZUPT with WITH_SDK=0 and WITH_PQBOX=0.
 
-The bundled CLI links to the libvuptsdk shared object via RUNPATH
-`/usr/lib/vaptvupt` inside the runtime container. See:
+Canonical upstream source:
 
-  * vaptvupt-5.2.1/LICENSE                — AGPL-3.0-or-later notice
-  * vaptvupt-5.2.1/THIRD-PARTY-NOTICES.md — full attribution + per-file SPDX
-
-All upstream sources are also published independently at:
-
-  * https://git.securityops.co/cristiancmoises/vaptvupt
-  * https://git.securityops.co/cristiancmoises/vaptvupt-codec
-  * https://git.securityops.co/cristiancmoises/libvuptsdk
+  * https://github.com/cristiancmoises/zupt
 
 ================================================================================
                 THE FULL TEXT OF THE GNU AFFERO GENERAL PUBLIC

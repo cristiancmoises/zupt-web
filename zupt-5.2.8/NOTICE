@@ -1,0 +1,39 @@
+ZUPT notices
+============
+
+Copyright remains with the holders identified by per-file notices and repository
+history.
+
+Public source-license scopes:
+
+- application, GUI, cryptographic tool, build and documentation code:
+  AGPL-3.0-or-later;
+- integrated VaptVupt compression codec files identified in LICENSE:
+  GPL-3.0-or-later.
+- xxHash-derived routines in `src/zupt_xxh.c` and `src/vv_xxh64.c`:
+  BSD-2-Clause in addition to their application/codec license.
+- pq-crystals/kyber-derived portions in `src/zupt_mlkem.c`:
+  CC0-1.0 in addition to the application license.
+- curve25519-donna-derived portions in `src/zupt_x25519.c`:
+  BSD-3-Clause in addition to the application license; Copyright 2008,
+  Google Inc.
+- the x86 BCJ state machine in `src/vv_bcj.c` is adapted from Igor Pavlov's
+  public-domain LZMA SDK source.
+- the SHA-NI compression path in `src/zupt_sha256_shani.c` is adapted from
+  Jeffrey Walton's public-domain SHA-Intrinsics reference.
+
+The corresponding unmodified texts are LICENSE-AGPL-3.0,
+LICENSE-GPL-3.0, LICENSE-BSD-2-Clause, LICENSE-BSD-3-Clause, and
+LICENSE-CC0-1.0. Preserve THIRD-PARTY-NOTICES.md and all per-file SPDX and
+copyright notices when redistributing the source.
+
+Published historical revisions contain MIT notices for some first-party
+application and GUI material. Those historical permissions remain attached to
+the exact material distributed under them; see the 5.2.2 licensing erratum in
+CHANGELOG.md. The current source scopes above do not revoke an earlier grant.
+
+LICENSE-COMMERCIAL describes a possible separately executed commercial
+agreement for controlled first-party rights. It grants no additional permission
+by itself and does not alter the public licenses.
+
+Commercial licensing contact: sac@securityops.co

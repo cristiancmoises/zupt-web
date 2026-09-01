@@ -1,0 +1,32 @@
+#!/usr/bin/make -f
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+# Honour Debian's reproducible-build epoch when set by dpkg-buildpackage.
+export SOURCE_DATE_EPOCH ?= 1788134400
+
+# Hardening flags — Debian's defaults are already strong, this adds project-
+# specific ones.
+export DEB_BUILD_MAINT_OPTIONS = hardening=+all
+export DEB_CFLAGS_MAINT_APPEND = -Wall -Wextra -Wpedantic
+export DEB_LDFLAGS_MAINT_APPEND = -Wl,--as-needed
+
+%:
+	dh $@
+
+override_dh_auto_build:
+	# Source-only build: no vendored libraries, native crypto only.
+	$(MAKE) WITH_SDK=0 WITH_PQBOX=0 -j$$(nproc)
+
+override_dh_auto_test:
+	# Distro-safe quick, traversal, integrity, codec and NIST/RFC checks.
+	$(MAKE) WITH_SDK=0 WITH_PQBOX=0 check
+
+override_dh_auto_install:
+	# Binary package is `zupt` -> stage into debian/zupt (dh derives the
+	# staging dir from the Package: name in debian/control). Source-only: nothing
+	# to install beyond `make install` (no .so).
+	$(MAKE) DESTDIR=$(CURDIR)/debian/zupt PREFIX=/usr \
+		WITH_SDK=0 WITH_PQBOX=0 INSTALL_LEGACY_ALIAS=0 install
+
+override_dh_auto_clean:
+	$(MAKE) clean

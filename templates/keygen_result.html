@@ -2,36 +2,35 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Keys Generated — VaptVupt</title>
+<title>Keys Generated — ZUPT</title>
 <link rel="icon" type="image/png" href="/static/favicon.png">
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=DM+Sans:wght@400;600;700&display=swap" rel="stylesheet">
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
-body{background:#000;color:#c4dde8;font:15px/1.65 'DM Sans',system-ui,sans-serif;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px}
+body{background:#000;color:#c4dde8;font:15px/1.65 system-ui,sans-serif;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px}
 .box{background:#070c14;border:1px solid rgba(0,255,255,.12);border-radius:16px;padding:40px;width:100%;max-width:600px;box-shadow:0 0 40px rgba(0,255,255,.04)}
-h1{font:700 20px 'DM Sans',sans-serif;color:#fff;margin-bottom:8px;display:flex;align-items:center;gap:10px}
+h1{font:700 20px system-ui,sans-serif;color:#fff;margin-bottom:8px;display:flex;align-items:center;gap:10px}
 h1 svg{color:#0e8}
 .sub{font-size:14px;color:#6890a0;margin-bottom:24px;line-height:1.7}
 .key-row{background:rgba(0,0,0,.5);border:1px solid rgba(0,255,255,.06);border-radius:12px;padding:18px 22px;margin-bottom:12px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}
-.key-row b{font:600 15px 'DM Sans',sans-serif;color:#fff;display:block;margin-bottom:2px}
-.key-row span{font:13px 'IBM Plex Mono',monospace;color:#6890a0}
-.dl{display:inline-flex;align-items:center;gap:8px;padding:10px 22px;border:none;border-radius:8px;font:700 12px 'DM Sans',sans-serif;cursor:pointer;text-decoration:none;transition:.2s;letter-spacing:.5px;text-transform:uppercase;background:linear-gradient(135deg,#002430,#004858);color:#0ff;border:1px solid rgba(0,255,255,.14)}
+.key-row b{font:600 15px system-ui,sans-serif;color:#fff;display:block;margin-bottom:2px}
+.key-row span{font:13px ui-monospace,monospace;color:#6890a0}
+.dl{display:inline-flex;align-items:center;gap:8px;padding:10px 22px;border:none;border-radius:8px;font:700 12px system-ui,sans-serif;cursor:pointer;text-decoration:none;transition:.2s;letter-spacing:.5px;text-transform:uppercase;background:linear-gradient(135deg,#002430,#004858);color:#0ff;border:1px solid rgba(0,255,255,.14)}
 .dl:hover{box-shadow:0 0 20px rgba(0,255,255,.2);border-color:#0ff;text-decoration:none}
-.back{display:inline-flex;align-items:center;gap:6px;padding:9px 18px;border-radius:8px;font:600 12px 'DM Sans',sans-serif;text-decoration:none;color:#6890a0;border:1px solid rgba(0,255,255,.07);text-transform:uppercase;letter-spacing:.5px;margin-top:20px}
+.back{display:inline-flex;align-items:center;gap:6px;padding:9px 18px;border-radius:8px;font:600 12px system-ui,sans-serif;text-decoration:none;color:#6890a0;border:1px solid rgba(0,255,255,.07);text-transform:uppercase;letter-spacing:.5px;margin-top:20px}
 .back:hover{border-color:#08b;color:#c4dde8;text-decoration:none}
-.warn{font:12px 'DM Sans',sans-serif;color:#2e4854;margin-top:22px;padding:14px 18px;background:rgba(255,50,96,.03);border-left:3px solid rgba(255,50,96,.15);border-radius:0 12px 12px 0;line-height:1.75}
+.warn{font:12px system-ui,sans-serif;color:#2e4854;margin-top:22px;padding:14px 18px;background:rgba(255,50,96,.03);border-left:3px solid rgba(255,50,96,.15);border-radius:0 12px 12px 0;line-height:1.75}
 .warn b{color:#f36}
-.log{font:10px 'IBM Plex Mono',monospace;color:#2e4854;margin-top:16px;padding:12px 16px;background:rgba(0,0,0,.5);border-radius:10px;max-height:100px;overflow-y:auto;line-height:1.8;white-space:pre-wrap;border:1px solid rgba(0,255,255,.04)}
+.log{font:10px ui-monospace,monospace;color:#2e4854;margin-top:16px;padding:12px 16px;background:rgba(0,0,0,.5);border-radius:10px;max-height:100px;overflow-y:auto;line-height:1.8;white-space:pre-wrap;border:1px solid rgba(0,255,255,.04)}
 @media(max-width:500px){.box{padding:24px 18px}.key-row{padding:14px 16px}}
 </style>
 </head>
 <body>
 <div class="box">
   <h1><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg>Keypair Generated</h1>
-  <p class="sub">{% if key_kind == 'sdk' %}SDK v2 keypair (HKDF-SHA3-256 + key commitment + HPKE binding + Argon2id) ready. Use with <code>--pq-sdk</code>.{% elif key_kind == 'pqonly' %}Full post-quantum keypair (ML-KEM-768 only, no classical layer) ready. Use with <code>--pq-only</code>.{% else %}Hybrid ML-KEM-768 + X25519 keypair ready. Use with <code>--pq</code>.{% endif %}</p>
-  <div class="key-row"><div><b>&#128274; Private Key</b><span>vaptvupt_private.key</span></div><a href="/download-key/{{ job_id }}/private" class="dl"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>Download</a></div>
-  <div class="key-row"><div><b>&#128275; Public Key</b><span>vaptvupt_public.key</span></div><a href="/download-key/{{ job_id }}/public" class="dl"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>Download</a></div>
-  <div class="warn"><b>&#9888;</b> The private key decrypts your archives — store it safely, never share it. Keys auto-expire from the server after 4 hours.</div>
+  <p class="sub">{% if key_kind == 'pqonly' %}Full post-quantum keypair (ML-KEM-768 only, no classical layer) ready. Use with <code>--pq-only</code>.{% else %}Hybrid ML-KEM-768 + X25519 keypair ready. Use with <code>--pq</code>.{% endif %}</p>
+  <div class="key-row"><div><b>&#128274; Private Key</b><span>zupt_private.key</span></div><a href="/download-key/{{ job_id }}/private" class="dl"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>Download</a></div>
+  <div class="key-row"><div><b>&#128275; Public Key</b><span>zupt_public.key</span></div><a href="/download-key/{{ job_id }}/public" class="dl"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>Download</a></div>
+  <div class="warn"><b>&#9888;</b> The private key decrypts your archives — store it safely, never share it. By default, download links expire after 4 hours and are purged on subsequent requests.</div>
   <div class="log">{{ log }}</div>
   <a href="/" class="back"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>Back</a>
 </div>

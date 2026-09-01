@@ -1,0 +1,65 @@
+ZUPT licensing summary
+======================
+
+Copyright (C) 2025-2026 Cristian Cezar Moisés
+
+The ZUPT application, command-line interface, graphical interface,
+cryptographic tool code, build files, and documentation identified by the
+following SPDX expression are free software under:
+
+    AGPL-3.0-or-later
+
+The integrated VaptVupt compression codec is a separately identified component.
+The codec files carry this SPDX expression:
+
+    GPL-3.0-or-later
+
+The two source files derived from Yann Collet's xxHash implementation carry an
+additional BSD-2-Clause obligation:
+
+    src/zupt_xxh.c
+    src/vv_xxh64.c
+
+Portions of the native ML-KEM implementation were adapted from the
+pq-crystals/kyber reference implementation. Upstream offers that code under
+CC0-1.0 or Apache-2.0; this distribution uses the CC0-1.0 option for those
+portions:
+
+    src/zupt_mlkem.c
+
+Portions of the native X25519 implementation were adapted from
+curve25519-donna and conservatively retain its repository BSD-3-Clause terms:
+
+    src/zupt_x25519.c
+
+The codec scope consists of src/vv_*.c, src/vaptvupt_api.c,
+include/vaptvupt*.h, and include/vv_*.h. Per-file SPDX notices are
+authoritative if a file falls outside this summary.
+
+GPL-3.0-or-later and AGPL-3.0-or-later code may be combined under section 13 of
+the licenses. Distribution of this repository therefore needs to preserve both
+license scopes and their notices. The unmodified license texts are provided in:
+
+    LICENSE-AGPL-3.0
+    LICENSE-GPL-3.0
+    LICENSE-BSD-2-Clause
+    LICENSE-BSD-3-Clause
+    LICENSE-CC0-1.0
+
+ZUPT is distributed without warranty; see the applicable license text for
+the complete terms.
+
+Historical licensing note: published repository history includes earlier
+first-party application and GUI material distributed with MIT license notices.
+Those permissions remain applicable to the exact material distributed under
+them; the current license summary does not revoke or reinterpret an earlier
+grant. The 5.2.2 erratum in CHANGELOG.md identifies the known repository
+evidence. Current files follow their current per-file SPDX notices.
+
+The applicable copyright holder may separately offer commercial terms for
+first-party rights that the holder controls. LICENSE-COMMERCIAL is only a
+licensing inquiry and scope notice; it is not a commercial license grant and
+does not relicense third-party or separately noticed material.
+
+Commercial licensing contact: sac@securityops.co
+Canonical repository: https://github.com/cristiancmoises/zupt

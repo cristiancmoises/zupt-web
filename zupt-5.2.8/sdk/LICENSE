@@ -1,0 +1,59 @@
+libzuptsdk licensing notice
+===========================
+
+Copyright (C) 2025-2026 Cristian Cezar Moisés
+
+The libzuptsdk compatibility wrapper, public header, bindings, tests, and build
+integration carry this SPDX expression unless a file states otherwise:
+
+    AGPL-3.0-or-later
+
+The shared and static libraries produced by `make sdk` also incorporate the
+bundled VaptVupt compression codec sources identified at repository level by:
+
+    GPL-3.0-or-later
+
+The built library also contains the two xxHash-derived units identified by:
+
+    BSD-2-Clause
+
+It also contains pq-crystals/kyber-derived portions of native ML-KEM under the
+upstream option selected by this distribution:
+
+    CC0-1.0
+
+It contains curve25519-donna-derived portions of native X25519 under:
+
+    BSD-3-Clause
+
+The built library therefore contains all five scopes and is described for package
+metadata by:
+
+    AGPL-3.0-or-later AND GPL-3.0-or-later AND BSD-2-Clause AND BSD-3-Clause AND CC0-1.0
+
+The complete, unmodified public license texts and applicable notices are in:
+
+    LICENSE-AGPL-3.0
+    LICENSE-GPL-3.0
+    LICENSE-BSD-2-Clause
+    LICENSE-BSD-3-Clause
+    LICENSE-CC0-1.0
+    LICENSE
+    NOTICE
+    THIRD-PARTY-NOTICES.md
+
+Preserve per-file SPDX and copyright notices; they are authoritative for files
+outside this summary. Published historical revisions may carry different
+notices for their exact contents. This current notice does not revoke or
+reinterpret a historical grant.
+
+The in-tree libzuptsdk compatibility library is distinct from the separately
+packaged system libvuptsdk used by the ZUPT CLI's optional `WITH_SDK=1`
+integration.
+
+The applicable copyright holder may offer controlled first-party rights under
+a separately executed commercial agreement. This notice grants no commercial
+permission and cannot relicense rights the licensor does not control.
+
+Commercial licensing inquiries: sac@securityops.co
+Canonical project: https://github.com/cristiancmoises/zupt
