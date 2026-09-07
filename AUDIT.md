@@ -1,138 +1,148 @@
-# Release audit: ZUPT Web 5.2.8
+# ZUPT Web 5.2.9 candidate audit
 
-This document records the release gate executed on 2026-09-01. It covers the
-immutable upstream source, the Flask boundary, the container, and the live HTTP
-service. A skipped or constrained check is listed explicitly rather than being
-represented as a pass.
+This document records evidence gathered for the 5.2.9 candidate on 2026-09-06.
+It deliberately separates the published ZUPT upstream release, focused local
+checks of this downstream working tree, and checks that still require the final
+container or deployment. Results from ZUPT Web 5.2.8 do not transfer to this
+candidate.
+
+Current status: source provenance and the focused application/static checks
+below pass. The final image, live HTTP workflow, and production deployment are
+not release evidence until they are run against the final committed tree.
 
 ## Audited inputs
 
 | Input | Audited value |
 |---|---|
-| ZUPT release | `v5.2.8` |
-| Upstream tag commit | `ebb9ab3aa1d42c50030ca02883f6162dc4771fe1` |
-| Official source-asset SHA-256 | `378b9506211545b9594cf0d38ac8955d9b1cac34eb6b379ae0ec26b84edb65f7` |
-| Bundled manifest | 201 regular files, all hashes valid |
+| ZUPT release | `v5.2.9` |
+| Upstream tag commit | `63f27dd0c5afcf155f813a069c29f6384d46790c` |
+| Official source asset | `zupt-5.2.9.tar.gz`, 817395 bytes |
+| Official source-asset SHA-256 | `24e1e3251c0bbcab049d3a7c3f1451e1b824fbb95ef454ca7c03077c8a470171` |
+| Bundled manifest | 203 regular files |
 | Build profile | `WITH_SDK=0 WITH_PQBOX=0` |
-| Web runtime | Python 3.12, Flask 3.1.3, Gunicorn 26.2.0 |
-| Release image | `zupt-web:5.2.8` on Ubuntu 24.04 |
+| Locked web runtime | Python 3.12, Flask 3.1.3, Gunicorn 26.2.0 |
+| Candidate base | ZUPT Web `fbfe4c85487080fb0b992f6b3d7d8395e0ed10df` |
+| Intended image name | `zupt-web:5.2.9` |
 
-The upstream release asset, exact source inventory, and retrieval procedure are
-recorded in [UPSTREAM.md](UPSTREAM.md). The exact-tag upstream CI run completed
-15 of 15 jobs successfully. This downstream audit independently rebuilt and
-tested the promoted source; the one result taken from that external run is
-identified explicitly below.
+The source inventory and retrieval procedure are recorded in
+[UPSTREAM.md](UPSTREAM.md).
 
-## Results
+## Verified upstream evidence
 
-### Upstream CLI
+GitHub Actions run
+[`34048047543`](https://github.com/cristiancmoises/zupt/actions/runs/34048047543)
+completed successfully at the exact `v5.2.9` tag commit. The GitHub API reported
+15 completed jobs and 15 successful conclusions, including GCC and Clang builds,
+strict warnings, sanitizers, source reproducibility, analyzers, Linux packages,
+and native Windows and macOS package gates.
 
-The source gate ran in a fresh Ubuntu 24.04 environment.
+The published non-draft, non-prerelease
+[`v5.2.9` release](https://github.com/cristiancmoises/zupt/releases/tag/v5.2.9)
+reports the source asset size and SHA-256 shown above. These are upstream ZUPT
+results. They do not by themselves validate this Flask application, its image,
+or its deployment.
 
-| Gate | Result |
-|---|---|
-| Manifest verification and exact 201-file inventory | Pass |
-| Source-only scanner (including nested archives/binaries) | Pass: 0 opaque archives |
-| Clean source-only build and `make check` | Pass |
-| Regression suite | Pass: 22 passed, 0 failed |
-| Multithreaded suite | Pass: 14 passed, 0 failed |
-| Native post-quantum suite | Pass: 10 passed, 0 failed |
-| Deduplication suite | Pass: 14 passed, 0 failed |
-| Exact-size codec suite | Pass: 81 passed, 0 failed |
-| In-tree SDK library suite | Pass: 15 passed, 0 failed |
-| Test-vector suite | Pass: 16 passed, 0 failed |
-| Installed-file contract | Pass |
-| License audit | Pass |
-| ASan/UBSan smoke | Pass |
-| Format fuzz smoke | Pass: 1,000 iterations, 0 crashes |
-| GCC strict warnings, conversions, and SHA-NI build | Pass |
-| Cppcheck warning/performance and error checks | Pass |
-| `tests/test_mlkem_fips203.sh` with OpenSSL 3.5 | Upstream exact-tag CI: pass, 3 of 3; local Ubuntu: skipped |
+## Focused local evidence
 
-The installed-file test included version/help checks, byte-exact password and
-recipient-key round trips, corruption rejection, extraction path confinement,
-and an unprivileged execution check.
-
-One Cppcheck *style* subcheck reported an upstream redundant-condition
-diagnostic at `src/zupt_format.c:1246` (`knownConditionTrueFalse`): 11 of its 12
-style assertions passed. The immutable promoted source was not patched to hide
-the finding. Warning/performance and error-severity Cppcheck gates passed, as
-did the compiler, sanitizer, fuzz, regression, and live archive matrices.
-
-### Web application and dependencies
+These checks ran from the current downstream working tree on 2026-09-06 in the
+America/Sao_Paulo timezone.
 
 | Gate | Result |
 |---|---|
-| Unit and route suite | Pass: 14 of 14 |
-| Python warnings promoted to errors | Pass |
-| Python byte compilation | Pass |
-| Bandit application scan | Pass: no findings |
-| `pip-audit` against the hash-locked requirements | Pass: no known vulnerabilities |
-| ShellCheck plus Bash/POSIX syntax checks | Pass |
-| Compose model and canonical/legacy environment fallback | Pass |
-| Read-only-container route suite | Pass |
+| Published source-asset SHA-256 and size | PASS |
+| Manifest names versus archive members | PASS: exact match |
+| Manifest hashes versus archive and bundled tree | PASS: 203 of 203 |
+| Source-only scanner | PASS: 203 files, 0 archives (`file` 5.46) |
+| Stale release-reference scan outside upstream history | PASS: only intentional historical 5.2.8 comparisons remain |
+| Hash-locked dependency installation | PASS |
+| Unit and route suite with warnings promoted to errors | PASS: 16 of 16 |
+| Proxy-TLS secure-cookie regression | PASS |
+| Private-workdir ownership, mode, and symlink regression | PASS |
+| Invalid `ZUPT_COOKIE_SECURE` startup rejection | PASS |
+| Python byte compilation | PASS |
+| ShellCheck and Bash/POSIX syntax checks | PASS |
+| Compose model validation | PASS |
+| Bandit 1.8.6 application scan | PASS: no findings |
+| `pip-audit` 2.10.1 with hash enforcement | PASS: no known vulnerabilities |
+| Clean Ubuntu 24.04 ZUPT build and `make check` | PASS on an unmodified second run; timing qualification below |
+| Final multi-stage Docker build | PASS: Docker 20.10.27 |
+| Final-image inventory | PASS: uid 1001; no pip, compiler, or make; required license payload present; no binary RPATH/RUNPATH |
+| Hardened read-only container controls | PASS: all capabilities dropped, `no-new-privileges`, 256-PID and 4-GiB limits, mode-0700 tmpfs |
+| Live HTTP and cryptographic workflow | PASS: 7 stages, 133 assertions, four credential-mode round trips |
+| `git diff --check` | PASS |
 
-The route tests cover CSRF enforcement, password preservation, private-key
-handling, archive mode selection, unsafe option combinations, legacy archive
-guidance, expiring downloads, CLI readiness, and safe filenames. Passwords are
-sent to ZUPT through `--pass-fd 0`, not process arguments.
+The route suite covers CSRF enforcement, byte-accurate passwords, inherited
+password input rather than password argv, mutually exclusive credentials,
+archive mode selection, legacy archive guidance, expiring downloads, readiness,
+safe filenames, and rejection of shared or symlinked work directories. The new
+proxy-TLS regression requires the CSRF cookie to be `Secure` when
+`ZUPT_COOKIE_SECURE=1`. The HTTPS live smoke test independently rejects a public
+HTTPS service that omits that cookie attribute.
 
-### Final image and live service
+The manifest comparison extracted every regular member from the known source
+asset and compared its digest with both `zupt-5.2.9.SHA256SUMS` and the bundled
+tree. It did not infer provenance merely from a matching directory name.
 
-The release image was rebuilt after the final templates, licensing text, and
-documentation changes. It then ran with a read-only root filesystem, uid 1001,
-all capabilities dropped, `no-new-privileges`, a 256-process limit, and a 2 GiB
-work tmpfs.
+The first uncached container build stopped in upstream
+`test_password_prompt_signal.sh`: the test observed the prompt before it
+observed terminal echo being disabled. No source or test was changed; the same
+immutable build passed on the next run. Repeating that exact PTY test 100 times
+against the resulting binary produced 99 passes and one identical failure.
+This is recorded as a timing-sensitive upstream test concern, not hidden as an
+all-pass result. The web application does not invoke the interactive prompt;
+it supplies passwords through inherited standard input and `--pass-fd 0`.
 
-| Gate | Result |
+The live matrix exercised LZHP/plain at level 1, Store/password at level 5,
+VaptVupt/hybrid at level 9, and Auto/PQ-only at level 5. Each workflow covered
+compression, metadata inspection, verification, extraction, and byte-exact
+recovery through the production Gunicorn boundary. The candidate container was
+then stopped and removed.
+
+## Not yet run for this candidate
+
+| Gate | Status |
 |---|---|
-| Runtime ZUPT version | Pass: 5.2.8 |
-| Live HTTP/crypto workflow | Pass: 133 assertions |
-| Plain LZHP level-1 round trip | Pass, byte exact |
-| Password/store level-5 round trip | Pass, byte exact |
-| Hybrid VaptVupt level-9 round trip | Pass, byte exact |
-| Full-PQ auto level-5 round trip | Pass, byte exact |
-| Inspect, verify, and extract routes | Pass |
-| Health/readiness, CSRF, headers, UI, and key generation | Pass |
-| Solid + dedup invalid combination | Pass: rejected |
-| One-shot job lifecycle | Pass: streamed jobs removed after response close |
-| Final-image inventory | Pass: no pip or compiler; required licenses present |
+| Local extended ZUPT, SDK, sanitizer, fuzz, and static-analysis suites | NOT RUN; upstream exact-tag coverage is recorded separately |
+| Public HTTPS 5.2.9 smoke test | NOT RUN |
+| Production deployment and rollback test | NOT RUN |
 
-The four credential-mode workflows completed against the production Gunicorn
-service. After responses closed, only the two deliberately retained key-pair
-jobs remained in the tmpfs; all compression, inspection, verification, and
-extraction jobs had been removed.
+Do not convert these entries to PASS based on the 5.2.8 audit or on upstream
+ZUPT CI. Record the exact final commit, commands, environment, and result when a
+gate is executed.
 
-## Environmental constraints and intentional skips
+## Security and environment notes
 
-- The constant-time timing probe was inconclusive on the shared audit host due
-  to scheduler contention. It is not reported as a pass or a failure; the
-  functional authentication and corruption gates passed.
-- Loop-device testing could not run because the audit container had no loop
-  device. Path-confinement and installed-file disk-mode checks did run.
-- Ubuntu 24.04 supplies OpenSSL 3.0, so its local ML-KEM interoperability probe
-  skipped. The same exact ZUPT release separately passed all three probes
-  against OpenSSL 3.5.
-- External SDK/PQBOX integration checks are intentionally inapplicable to the
-  selected source-only profile. Native `--pq`, native `--pq-only`, and the
-  rebuildable in-tree SDK library tests ran successfully.
-- Docker reported that the audit host kernel does not support swap accounting.
-  The configured memory limit still applies, but a distinct swap limit could
-  not be demonstrated on that host.
+- The default Compose bind remains `127.0.0.1`. Remote publication requires a
+  separately managed TLS boundary.
+- TLS normally terminates before the Flask container. The application therefore
+  does not trust forwarded scheme headers automatically. Set
+  `ZUPT_COOKIE_SECURE=1` when browsers reach the service exclusively through
+  HTTPS; values other than `0` or `1` fail startup.
+- Local HTTP development retains `ZUPT_COOKIE_SECURE=0`, because a browser will
+  not return a Secure cookie over plain HTTP.
+- The system Python did not contain Flask. The unit suite ran in a temporary
+  virtual environment populated with `pip --require-hashes -r requirements.txt`.
+- The base shell did not contain `file`; the source scanner ran through
+  `guix shell file` with file 5.46.
+- The default job path is per-uid. Startup rejects a symlink, foreign owner, or
+  group/other permissions; the supported Compose deployment replaces that path
+  with a uid-1001, mode-0700 tmpfs.
+- No existing local or production service was replaced during the local
+  container review. The exact temporary test container was removed afterward.
+
+The selected source-only profile intentionally excludes external SDK/PQBOX
+integrations. Native password, `--pq`, and `--pq-only` paths remain in scope.
 
 ## Reproduction commands
 
-The commands below cover the portable release gates. The timing, loop-device,
-and OpenSSL 3.5 qualifications remain as stated above because their results
-depend on host capabilities.
-
 ```bash
-# Verify and build the immutable source-only CLI.
+# Verify the immutable source and build the source-only CLI.
+sha256sum --check --strict zupt-5.2.9.SHA256SUMS
+(cd zupt-5.2.9 && bash scripts/check-source-only.sh --tree .)
 ./build-zupt.sh
 
-# Run the extended CLI, license, sanitizer, fuzz, installed-contract, and
-# static-analysis gates (the recorded Cppcheck style diagnostic is expected).
-cd zupt-5.2.8
+# Extended upstream checks applicable to the embedded release archive.
+cd zupt-5.2.9
 make WITH_SDK=0 WITH_PQBOX=0 test-all
 make sdk-test
 make audit-licenses
@@ -142,29 +152,36 @@ bash scripts/test-installed-zupt.sh ./zupt
 bash tests/test_static_analysis.sh
 cd ..
 
-# Run the web unit/route gate in a hash-locked environment.
+# Hash-locked web checks.
 python3 -m venv .venv
 .venv/bin/pip install --require-hashes -r requirements.txt
 PYTHONWARNINGS=error .venv/bin/python -m unittest discover -s tests -v
-python3 -m py_compile app.py tests/test_app.py tests/live_smoke.py
-bandit -q -r app.py
-pip-audit -r requirements.txt
+.venv/bin/python -m py_compile app.py tests/test_app.py tests/live_smoke.py
 shellcheck setup.sh build-zupt.sh
 bash -n setup.sh
 sh -n build-zupt.sh
 docker compose config --quiet
 
-# Build and run the production-boundary smoke matrix.
-docker build --tag zupt-web:5.2.8 .
+# Optional dependency-vulnerability and application scans.
+bandit -q -r app.py
+pip-audit -r requirements.txt
+
+# Pre-deployment container gate over loopback HTTP.
+docker build --tag zupt-web:5.2.9 .
 docker run --detach --name zupt-web-audit \
   --read-only --cap-drop ALL --security-opt no-new-privileges \
   --memory 4g --pids-limit 256 \
   --tmpfs /tmp/zupt-work:size=2G,mode=700,uid=1001,gid=1001 \
-  --publish 127.0.0.1:8282:8080 zupt-web:5.2.8
-ZUPT_WEB_URL=http://127.0.0.1:8282 python3 tests/live_smoke.py
+  --publish 127.0.0.1:8282:8080 zupt-web:5.2.9
+python3 tests/live_smoke.py --base-url http://127.0.0.1:8282
 docker rm --force zupt-web-audit
+
+# After an HTTPS reverse-proxy deployment with ZUPT_COOKIE_SECURE=1.
+python3 tests/live_smoke.py \
+  --base-url https://zupt-web.securityops.co \
+  --expected-version 5.2.9
 ```
 
-The CI definition in `.github/workflows/ci.yml` repeats the portable release
-subset on every push and pull request. The host-specific evidence above remains
-a recorded release audit rather than a portability claim.
+The CI definition repeats the portable source, application, image, and live
+container subset on pushes and pull requests. Hosted CI must still complete on
+the final commit; a local working-tree result is not a substitute.

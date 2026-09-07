@@ -10,7 +10,7 @@ services:
   zupt:
     build:
       context: .
-    image: zupt-web:5.2.8
+    image: zupt-web:5.2.9
     container_name: zupt-web
     pull_policy: build       # never try to pull from a registry; build locally
     ports:
@@ -20,6 +20,7 @@ services:
       ZUPT_KEY_TTL_SEC: "${ZUPT_KEY_TTL_SEC:-${VAPTVUPT_KEY_TTL_SEC:-14400}}"
       ZUPT_COMPRESS_TIMEOUT: "${ZUPT_COMPRESS_TIMEOUT:-${VAPTVUPT_COMPRESS_TIMEOUT:-600}}"
       ZUPT_EXTRACT_TIMEOUT: "${ZUPT_EXTRACT_TIMEOUT:-${VAPTVUPT_EXTRACT_TIMEOUT:-600}}"
+      ZUPT_COOKIE_SECURE: "${ZUPT_COOKIE_SECURE:-${VAPTVUPT_COOKIE_SECURE:-0}}"
       ZUPT_SECRET_KEY: "${ZUPT_SECRET_KEY:-${VAPTVUPT_SECRET_KEY:-}}"
     restart: unless-stopped
 

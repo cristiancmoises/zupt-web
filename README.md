@@ -1,13 +1,21 @@
 # ZUPT Web — Post-Quantum Backup in Your Browser
 
+[English](README.md) | [Português do Brasil](README.pt-BR.md)
+
 ZUPT Web is a self-hosted browser frontend for the ZUPT backup archiver. It
 compresses, encrypts, verifies, inspects, and extracts `.zupt` archives without
 accounts or cloud storage.
 
-This release bundles the immutable **ZUPT 5.2.8** source release with the
-**VaptVupt 2.65.3** compression codec. ZUPT 5.2.2 restored the product's
+This release bundles the immutable **ZUPT 5.2.9** source release with the
+**VaptVupt 2.65.11** compression codec. ZUPT 5.2.2 restored the product's
 original name after releases 3.0.0–5.2.1 used VaptVupt; the archive extension
 and format v1.6 did not change.
+
+The 5.2.9 refresh carries the codec's stricter span, truncated-bitstream,
+output-capacity, frame-metadata, and XXH64 tail checks into the web container.
+It also retains ZUPT's read-back verification before a compressed block is
+accepted. The web routes, archive format, and cryptographic modes are unchanged
+from 5.2.8.
 
 ```bash
 docker compose up -d --build
@@ -16,7 +24,7 @@ docker compose up -d --build
 
 ## Important upgrade note
 
-The official ZUPT 5.2.8 source-only profile deliberately excludes the opaque
+The official ZUPT 5.2.9 source-only profile deliberately excludes the opaque
 `libvuptsdk` binary used by the old web image. Consequently:
 
 - native password, hybrid `--pq`, and full-PQ `--pq-only` workflows are
@@ -27,7 +35,7 @@ The official ZUPT 5.2.8 source-only profile deliberately excludes the opaque
 
 Do not delete your 5.2.1 recovery environment until those archives have been
 restored and re-encrypted with a native mode. See [MIGRATION.md](MIGRATION.md)
-for a safe procedure. ZUPT 5.2.8 can read native `--pq` and `--pq-only`
+for a safe procedure. ZUPT 5.2.9 can read native `--pq` and `--pq-only`
 archives and keys created by 5.2.1; the reverse direction is not guaranteed.
 
 ## Features
@@ -37,7 +45,7 @@ archives and keys created by 5.2.1; the reverse direction is not guaranteed.
 | Hybrid post-quantum encryption | ML-KEM-768 + X25519 via `--pq` |
 | Full post-quantum encryption | ML-KEM-768 via `--pq-only` |
 | Password encryption | AES-256-CTR + HMAC-SHA256; PBKDF2-SHA256 |
-| Compression | AUTO, VaptVupt 2.65.3, LZHP, or Store |
+| Compression | AUTO, VaptVupt 2.65.11, LZHP, or Store |
 | Archive safety | Authenticated integrity trailer, per-block validation, hardened extraction |
 | Backup options | Levels 1–9, solid mode, or block deduplication |
 | Metadata inspection | Format/trailer, UUID, flags, encryption metadata, sizes, block count |
@@ -65,9 +73,11 @@ PORT_HOST=8282 ./setup.sh
 ```
 
 The default bind is loopback-only because the UI accepts passwords and private
-keys. Put it behind an authenticated HTTPS reverse proxy for remote access.
-Set `BIND_HOST=0.0.0.0` only on a trusted LAN or when that TLS/authentication
-boundary is already in place.
+keys. Put it behind an HTTPS reverse proxy for remote access, and add access
+control when the service is not intended to be public. Set `BIND_HOST=0.0.0.0`
+only on a trusted LAN or when that proxy boundary is already in place. When TLS
+terminates at the proxy, set `ZUPT_COOKIE_SECURE=1`; the backend cannot infer
+the browser-facing scheme from an untrusted forwarded header.
 
 Manual deployment:
 
@@ -89,11 +99,15 @@ accepted as compatibility fallbacks for renamed-era deployments.
 | `ZUPT_SECRET_KEY` | generated at container start | Flask secret |
 | `ZUPT_COMPRESS_TIMEOUT` | `600` | Compression timeout in seconds (1–600) |
 | `ZUPT_EXTRACT_TIMEOUT` | `600` | Extraction/verify timeout in seconds (1–600) |
+| `ZUPT_COOKIE_SECURE` | `0` | Set to `1` when the browser reaches the service exclusively through HTTPS |
 
 Example:
 
 ```bash
 ZUPT_MAX_UPLOAD_MB=512 ZUPT_KEY_TTL_SEC=1800 docker compose up -d
+
+# HTTPS reverse-proxy deployment
+BIND_HOST=0.0.0.0 ZUPT_COOKIE_SECURE=1 docker compose up -d
 ```
 
 The supported Compose deployment fixes the CLI at `/usr/local/bin/zupt` and
@@ -106,7 +120,7 @@ read-only filesystem and 2 GiB tmpfs. Custom launchers may use `ZUPT_BIN` and
 
 ```bash
 curl -fsS http://localhost:8181/healthz
-# {"ok":true,"service":"zupt-web","version":"5.2.8"}
+# {"ok":true,"service":"zupt-web","version":"5.2.9"}
 
 curl -fsS http://localhost:8181/version  # CLI readiness; 503 when unavailable
 docker exec zupt-web zupt version
@@ -119,13 +133,15 @@ compatibility symlink is retained for scripts written against 3.0.0–5.2.1.
 ## Security posture
 
 - Every bundled upstream file is checked against a manifest generated from the
-  verified official ZUPT 5.2.8 release tarball before compilation; the asset's
+  verified official ZUPT 5.2.9 release tarball before compilation; the asset's
   promoted SHA-256 is recorded in [UPSTREAM.md](UPSTREAM.md).
 - The image builds ZUPT with `WITH_SDK=0 WITH_PQBOX=0`, so it contains no
   opaque SDK/PQBOX binaries and no private build-tree RPATH.
 - Passwords cross the CLI boundary through inherited standard input with
   `--pass-fd 0`; they never appear in process arguments.
 - Every form uses a constant-time-checked double-submit CSRF token.
+- HTTPS deployments can require the CSRF cookie's `Secure` attribute with
+  `ZUPT_COOKIE_SECURE=1`; the live HTTPS smoke test rejects a missing attribute.
 - Uploaded paths are isolated per job and output paths are checked before
   download or tar creation.
 - Flask sets CSP, clickjacking, MIME-sniffing, referrer, opener/resource, and
@@ -138,7 +154,8 @@ compatibility symlink is retained for scripts written against 3.0.0–5.2.1.
 
 This is defense in depth, not a claim that browser uploads are risk-free. Never
 send credentials to it over untrusted plain HTTP; keep the service private or
-place it behind an authenticated HTTPS reverse proxy.
+place it behind an HTTPS reverse proxy with access control appropriate to its
+audience.
 
 ## Architecture
 
@@ -149,7 +166,7 @@ Browser
 gunicorn (2 workers, uid 1001)
    │
    ▼
-Flask application ── explicit argv + inherited password FD ──▶ ZUPT 5.2.8
+Flask application ── explicit argv + inherited password FD ──▶ ZUPT 5.2.9
    │                                                         (source-only)
    ▼
 tmpfs /tmp/zupt-work ── expiring job directories ──▶ streamed download
@@ -172,7 +189,7 @@ python3 -m venv .venv
 Exercise the bundled CLI directly:
 
 ```bash
-cd zupt-5.2.8
+cd zupt-5.2.9
 bash scripts/check-source-only.sh --tree .
 make clean
 make -j"$(getconf _NPROCESSORS_ONLN 2>/dev/null || printf 1)" \
@@ -211,6 +228,6 @@ ZUPT Web is AGPL-3.0-or-later. The bundled ZUPT source contains separately
 identified AGPL-3.0-or-later, GPL-3.0-or-later, BSD-2-Clause,
 BSD-3-Clause, and CC0-1.0 scopes. Preserve the complete `LICENSE*`, `NOTICE`,
 and `THIRD-PARTY-NOTICES.md` payload when redistributing the image or source.
-See [LICENSE](LICENSE) and `zupt-5.2.8/THIRD-PARTY-NOTICES.md`.
+See [LICENSE](LICENSE) and `zupt-5.2.9/THIRD-PARTY-NOTICES.md`.
 
 Commercial licensing inquiries: `sac@securityops.co`.

@@ -21,7 +21,7 @@ class ZuptWebTestCase(unittest.TestCase):
         self.previous_version_ok = zupt_web._VERSION_OK
         zupt_web.WORKDIR = Path(self.tempdir.name)
         zupt_web._rate.clear()
-        zupt_web._VERSION_CACHE = 'zupt 5.2.8 (format v1.6, VaptVupt 2.65.3)'
+        zupt_web._VERSION_CACHE = 'zupt 5.2.9 (format v1.6, VaptVupt 2.65.11)'
         zupt_web._VERSION_OK = True
         zupt_web.app.config.update(TESTING=True)
         self.client = zupt_web.app.test_client()
@@ -44,7 +44,7 @@ class ZuptWebTestCase(unittest.TestCase):
         self.assertEqual(response.get_json(), {
             'ok': True,
             'service': 'zupt-web',
-            'version': '5.2.8',
+            'version': '5.2.9',
         })
         self.assertEqual(response.headers['X-Frame-Options'], 'DENY')
         self.assertEqual(response.headers['X-Content-Type-Options'], 'nosniff')
@@ -67,8 +67,8 @@ class ZuptWebTestCase(unittest.TestCase):
         response = self.client.get('/')
         body = response.get_data(as_text=True)
         self.assertIn('ZUPT CLI', body)
-        self.assertIn('5.2.8', body)
-        self.assertIn('VaptVupt 2.65.3', body)  # codec name is intentional
+        self.assertIn('5.2.9', body)
+        self.assertIn('VaptVupt 2.65.11', body)  # codec name is intentional
         self.assertNotIn('action="/keygen-sdk"', body)
         self.assertNotIn('name="pq_sdk_key"', body)
         self.assertNotIn('fonts.googleapis.com', body)
@@ -77,6 +77,18 @@ class ZuptWebTestCase(unittest.TestCase):
     def test_csrf_is_required(self):
         response = self.client.post('/compress', data={})
         self.assertEqual(response.status_code, 403)
+
+    def test_secure_csrf_cookie_can_be_required_behind_proxy(self):
+        previous = zupt_web.COOKIE_SECURE
+        zupt_web.COOKIE_SECURE = True
+        try:
+            response = self.client.get('/')
+        finally:
+            zupt_web.COOKIE_SECURE = previous
+        cookie = response.headers.get('Set-Cookie', '')
+        self.assertIn('Secure', cookie)
+        self.assertIn('HttpOnly', cookie)
+        self.assertIn('SameSite=Strict', cookie)
 
     def test_environment_prefers_zupt_and_falls_back(self):
         with mock.patch.dict(os.environ, {
@@ -88,6 +100,26 @@ class ZuptWebTestCase(unittest.TestCase):
             'VAPTVUPT_BIN': '/compat/vaptvupt',
         }, clear=True):
             self.assertEqual(zupt_web.env('BIN'), '/compat/vaptvupt')
+
+    def test_workdir_rejects_symlinks_and_shared_permissions(self):
+        with tempfile.TemporaryDirectory() as root:
+            root = Path(root)
+            target = root / 'target'
+            target.mkdir(mode=0o700)
+            link = root / 'link'
+            link.symlink_to(target, target_is_directory=True)
+            with mock.patch.dict(os.environ,
+                                 {'ZUPT_WORKDIR': str(link)}):
+                with self.assertRaisesRegex(RuntimeError, 'not a symlink'):
+                    zupt_web.private_workdir()
+
+            shared = root / 'shared'
+            shared.mkdir(mode=0o700)
+            shared.chmod(0o750)
+            with mock.patch.dict(os.environ,
+                                 {'ZUPT_WORKDIR': str(shared)}):
+                with self.assertRaisesRegex(RuntimeError, 'group or other'):
+                    zupt_web.private_workdir()
 
     def test_password_validation_is_byte_accurate(self):
         self.assertIsNone(zupt_web._password_error('  -leading and spaced  '))

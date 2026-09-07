@@ -3,7 +3,7 @@
 # Copyright (C) 2026 Cristian Cezar Moisés
 # Commercial licensing: sac@securityops.co
 #
-# Build and exercise the bundled ZUPT 5.2.8 source-only release. The script
+# Build and exercise the bundled ZUPT 5.2.9 source-only release. The script
 # works both in the Docker builder (where /build is the source root) and from
 # the zupt-web checkout.
 
@@ -12,14 +12,14 @@ set -eu
 SCRIPT_DIR=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd -P)
 cd "$SCRIPT_DIR"
 
-MANIFEST=$SCRIPT_DIR/zupt-5.2.8.SHA256SUMS
+MANIFEST=$SCRIPT_DIR/zupt-5.2.9.SHA256SUMS
 
-if [ ! -f include/zupt.h ] && [ -d zupt-5.2.8 ]; then
-    cd zupt-5.2.8
+if [ ! -f include/zupt.h ] && [ -d zupt-5.2.9 ]; then
+    cd zupt-5.2.9
 fi
 
 if [ ! -f include/zupt.h ] || [ ! -x scripts/check-source-only.sh ]; then
-    echo "Error: could not locate the ZUPT 5.2.8 source tree" >&2
+    echo "Error: could not locate the ZUPT 5.2.9 source tree" >&2
     exit 1
 fi
 
@@ -34,8 +34,8 @@ fi
 sha256sum --check --strict "$MANIFEST"
 
 case "$(sed -n 's/^#define ZUPT_VERSION_STRING "\([^"]*\)".*/\1/p' include/zupt.h)" in
-    5.2.8) ;;
-    *) echo "Error: bundled source is not ZUPT 5.2.8" >&2; exit 1 ;;
+    5.2.9) ;;
+    *) echo "Error: bundled source is not ZUPT 5.2.9" >&2; exit 1 ;;
 esac
 
 # A previous local build may have generated ignored artifacts. The Makefile is

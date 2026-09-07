@@ -1,4 +1,4 @@
-# Migrating from VaptVupt Web 5.2.1 to ZUPT Web 5.2.8
+# Migrating from VaptVupt Web 5.2.1 to ZUPT Web 5.2.9
 
 The product and canonical command are again named ZUPT/`zupt`. Archive format
 v1.6 and the `.zupt` extension remain unchanged, but one old optional crypto
@@ -6,7 +6,7 @@ integration needs deliberate recovery before upgrade.
 
 ## Compatibility matrix
 
-| Archive created by 5.2.1 | ZUPT Web 5.2.8 |
+| Archive created by 5.2.1 | ZUPT Web 5.2.9 |
 |---|---|
 | Unencrypted | Supported |
 | Native hybrid `--pq` | Supported |
@@ -28,7 +28,7 @@ new image.
    storage.
 4. Compare the restored files to known hashes or the original dataset where
    possible.
-5. Create a fresh archive with ZUPT Web 5.2.8. Native hybrid `--pq` is the
+5. Create a fresh archive with ZUPT Web 5.2.9. Native hybrid `--pq` is the
    recommended recipient-key mode; `--pq-only` is available when a classical
    X25519 layer is not desired.
 6. Verify the new archive and perform a test restore before retiring the old
@@ -46,7 +46,7 @@ to a network. The old tag contains the dependency that this release removed.
 
 If the 5.2.1 Compose service is still running, download any ephemeral keys you
 still need before stopping it: its work directory is a tmpfs and disappears
-with the container. You can test 5.2.8 alongside it first with
+with the container. You can test 5.2.9 alongside it first with
 `PORT_HOST=8282 ./setup.sh`. Once migration is verified, stop the old project
 explicitly from its own checkout with `docker compose down`; the new setup
 script does not remove another Compose project for you.

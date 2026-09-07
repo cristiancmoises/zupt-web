@@ -10,7 +10,7 @@ If you operate a modified version of this software as a network service,
 the AGPL requires you to make your modifications available to your users.
 For commercial licensing inquiries, contact: sac@securityops.co
 
-Backend for the bundled ZUPT CLI (default 5.2.8). ZUPT restored its original
+Backend for the bundled ZUPT CLI (default 5.2.9). ZUPT restored its original
 name in 5.2.2; the `.zupt` archive format and VaptVupt codec name are
 unchanged. ZUPT_* environment variables are canonical, with VAPTVUPT_*
 accepted as compatibility fallbacks for deployments made with 3.0.0–5.2.1.
@@ -29,9 +29,11 @@ import hmac
 import os
 import secrets
 import shutil
+import stat
 # Fixed executable plus explicit argv; subprocess never invokes a shell.
 import subprocess  # nosec B404
 import tarfile
+import tempfile
 import time
 from pathlib import Path
 from functools import wraps
@@ -39,7 +41,7 @@ from collections import defaultdict
 from flask import (Flask, request, jsonify, send_file, render_template,
                    make_response, abort, g)
 
-APP_VERSION = '5.2.8'   # tracks the bundled ZUPT CLI version
+APP_VERSION = '5.2.9'   # tracks the bundled ZUPT CLI version
 
 
 def env(name, default=None):
@@ -63,6 +65,21 @@ def bounded_env_int(name, default, minimum, maximum):
     return value
 
 
+def private_workdir():
+    """Create or validate the caller-owned private job directory."""
+    default = Path(tempfile.gettempdir()) / f'zupt-web-{os.geteuid()}'
+    path = Path(env('WORKDIR', str(default)))
+    path.mkdir(mode=0o700, parents=True, exist_ok=True)
+    metadata = path.lstat()
+    if not stat.S_ISDIR(metadata.st_mode):
+        raise RuntimeError('ZUPT_WORKDIR must be a directory, not a symlink')
+    if metadata.st_uid != os.geteuid():
+        raise RuntimeError('ZUPT_WORKDIR must be owned by the service user')
+    if metadata.st_mode & (stat.S_IRWXG | stat.S_IRWXO):
+        raise RuntimeError('ZUPT_WORKDIR must not grant group or other access')
+    return path
+
+
 app = Flask(__name__)
 app.secret_key = env('SECRET_KEY', secrets.token_hex(32))
 
@@ -74,13 +91,19 @@ MAX_UPLOAD_MB = int(env('MAX_UPLOAD_MB', '512'))
 app.config['MAX_CONTENT_LENGTH'] = MAX_UPLOAD_MB * 1024 * 1024
 
 # This is a dedicated mode-0700 tmpfs in the supported container deployment.
-WORKDIR = Path(env('WORKDIR', '/tmp/zupt-work'))
-WORKDIR.mkdir(mode=0o700, parents=True, exist_ok=True)
+# Validate rather than chmod an existing path: changing a path supplied by an
+# operator could conceal a mistaken mount or unsafe ownership boundary.
+WORKDIR = private_workdir()
 
 ZUPT_BIN = env('BIN', '/usr/local/bin/zupt')
 MAX_KEY_AGE = int(env('KEY_TTL_SEC', str(3600 * 4)))
 COMPRESS_TIMEOUT = bounded_env_int('COMPRESS_TIMEOUT', 600, 1, 600)
 EXTRACT_TIMEOUT = bounded_env_int('EXTRACT_TIMEOUT', 600, 1, 600)
+# TLS is normally terminated by a reverse proxy, so request.is_secure cannot
+# reliably describe the browser-facing connection. Operators publishing the
+# service over HTTPS can require the Secure attribute explicitly without
+# breaking the default loopback HTTP development deployment.
+COOKIE_SECURE = bounded_env_int('COOKIE_SECURE', 0, 0, 1) == 1
 
 
 # ─── Rate limiting (in-process; fine for single-host deployment) ───
@@ -140,7 +163,8 @@ def headers(response):
     if getattr(g, 'csrf_new', False):
         response.set_cookie('csrf_token', g.csrf_token,
                             httponly=True, samesite='Strict',
-                            secure=request.is_secure, max_age=3600)
+                            secure=(COOKIE_SECURE or request.is_secure),
+                            max_age=3600)
     # Full security header set — applied directly by Flask/gunicorn.
     # The runtime container has no separate proxy.
     response.headers.setdefault('X-Content-Type-Options',       'nosniff')

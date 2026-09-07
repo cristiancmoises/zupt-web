@@ -313,7 +313,7 @@ select option { background: var(--card) }
         <div class="field"><span class="label">Codec</span>
           <select name="codec">
             <option value="auto">AUTO (hardware detect)</option>
-            <option value="vaptvupt">VaptVupt 2.65.3 (AVX2 / NEON)</option>
+            <option value="vaptvupt">VaptVupt 2.65.11</option>
             <option value="lzhp">LZHP (universal)</option>
             <option value="store">Store (no compression)</option>
           </select>
@@ -432,14 +432,14 @@ select option { background: var(--card) }
   <div class="about-grid">
     <div class="card highlight">
       <div style="font:500 10px var(--mono);color:var(--cy);text-transform:uppercase;letter-spacing:2.5px;margin-bottom:8px">ZUPT CLI</div>
-      <div style="font:800 40px var(--mono);color:#fff">5.2.8</div>
+      <div style="font:800 40px var(--mono);color:#fff">5.2.9</div>
       <p style="font:14px/1.7 var(--sans);color:var(--text2);margin-top:14px">Pure C11 backup utility with native hybrid and full post-quantum encryption, hardware-adaptive codecs, authenticated integrity trailers, block deduplication, and full-disk backup. Version 5.2.2 restored the original ZUPT name; the <code>.zupt</code> format remains v1.6.</p>
       <p style="font:11px var(--mono);color:var(--text3);margin-top:18px">&copy; 2026 Cristian Cezar Mois&eacute;s — AGPL-3.0-or-later</p>
     </div>
     <div class="card">
       <div style="font:500 10px var(--mono);color:var(--cy);text-transform:uppercase;letter-spacing:2.5px;margin-bottom:8px">VaptVupt codec</div>
-      <div style="font:800 40px var(--mono);color:#fff">2.65.3</div>
-      <p style="font:14px/1.7 var(--sans);color:var(--text2);margin-top:14px">Embedded LZ77 + tANS codec. Optimal parser with auto-detected binary/text paths, level-scaled block sizes, 4-stream Huffman. Level-9 text ratio 5.98&times; (was 3.77&times; in 5.0.0).</p>
+      <div style="font:800 40px var(--mono);color:#fff">2.65.11</div>
+      <p style="font:14px/1.7 var(--sans);color:var(--text2);margin-top:14px">Embedded LZ77 + entropy codec with portable SIMD and scalar paths. Version 2.65.11 adds stricter input-span, truncated-stream, output-capacity, frame-metadata, and XXH64 tail validation while preserving ZUPT archive compatibility.</p>
       <p style="font:11px var(--mono);color:var(--text3);margin-top:18px">&copy; 2026 Cristian Cezar Mois&eacute;s — GPL-3.0-or-later</p>
     </div>
   </div>
