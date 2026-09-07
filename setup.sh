@@ -12,7 +12,7 @@ PORT_HOST=${PORT_HOST:-8181}
 
 cat <<'BANNER'
 ══════════════════════════════════════════════
-  zupt-web 5.2.8 — build, audit, and deploy
+  zupt-web 5.2.9 — build, audit, and deploy
 ══════════════════════════════════════════════
 BANNER
 
@@ -47,7 +47,7 @@ if (( healthy == 0 )); then
     exit 1
 fi
 
-docker exec zupt-web python3 -c "import json, urllib.request; payload=json.load(urllib.request.urlopen('http://127.0.0.1:8080/healthz', timeout=2)); raise SystemExit(payload != {'ok': True, 'service': 'zupt-web', 'version': '5.2.8'})"
+docker exec zupt-web python3 -c "import json, urllib.request; payload=json.load(urllib.request.urlopen('http://127.0.0.1:8080/healthz', timeout=2)); raise SystemExit(payload != {'ok': True, 'service': 'zupt-web', 'version': '5.2.9'})"
 
 docker exec zupt-web /usr/local/bin/zupt version
 echo "Ready: http://localhost:${PORT_HOST}"

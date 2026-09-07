@@ -27,7 +27,7 @@ from typing import Mapping
 
 
 DEFAULT_URL = "http://127.0.0.1:8181"
-DEFAULT_VERSION = "5.2.8"
+DEFAULT_VERSION = "5.2.9"
 PASSWORD = "  -ZUPT live smoke passphrase 2026!  "
 PAYLOAD = (
     b"ZUPT Web live HTTP smoke test\n"
@@ -238,9 +238,13 @@ def csrf_from_index(audit: Audit, client: HttpClient, body: str) -> str:
     audit.check(match is not None, "index did not contain a valid CSRF token")
     assert match is not None
     token = html.unescape(match.group(1))
-    cookie_values = [cookie.value for cookie in client.cookies if cookie.name == "csrf_token"]
-    audit.check(len(cookie_values) == 1, "server did not set exactly one CSRF cookie")
-    audit.check(cookie_values[0] == token, "CSRF form token and cookie do not match")
+    csrf_cookies = [cookie for cookie in client.cookies if cookie.name == "csrf_token"]
+    audit.check(len(csrf_cookies) == 1, "server did not set exactly one CSRF cookie")
+    audit.check(csrf_cookies[0].value == token,
+                "CSRF form token and cookie do not match")
+    if urllib.parse.urlsplit(client.base_url).scheme == "https":
+        audit.check(csrf_cookies[0].secure,
+                    "HTTPS service issued its CSRF cookie without Secure")
     return token
 
 

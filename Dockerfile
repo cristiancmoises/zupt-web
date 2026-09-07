@@ -2,7 +2,7 @@
 # Copyright (C) 2026 Cristian Cezar Moisés
 # Commercial licensing: sac@securityops.co
 
-# Stage 1: verify and build the immutable ZUPT 5.2.8 source release.
+# Stage 1: verify and build the immutable ZUPT 5.2.9 source release.
 FROM ubuntu:24.04 AS cli-builder
 
 RUN apt-get update && \
@@ -11,9 +11,9 @@ RUN apt-get update && \
     rm -rf /var/lib/apt/lists/*
 
 WORKDIR /build
-COPY zupt-5.2.8/ /build/zupt-5.2.8/
+COPY zupt-5.2.9/ /build/zupt-5.2.9/
 COPY build-zupt.sh /build/build-zupt.sh
-COPY zupt-5.2.8.SHA256SUMS /build/zupt-5.2.8.SHA256SUMS
+COPY zupt-5.2.9.SHA256SUMS /build/zupt-5.2.9.SHA256SUMS
 RUN chmod 0755 /build/build-zupt.sh && /build/build-zupt.sh
 
 # Stage 2: resolve the hash-locked Python environment. Build tools and pip do
@@ -37,9 +37,9 @@ FROM ubuntu:24.04
 
 LABEL maintainer="Cristian Cezar Moisés <sac@securityops.co>"
 LABEL description="ZUPT Web — post-quantum backup utility browser frontend"
-LABEL version="5.2.8"
+LABEL version="5.2.9"
 LABEL org.opencontainers.image.title="zupt-web"
-LABEL org.opencontainers.image.version="5.2.8"
+LABEL org.opencontainers.image.version="5.2.9"
 LABEL org.opencontainers.image.licenses="AGPL-3.0-or-later"
 LABEL org.opencontainers.image.source="https://git.securityops.co/cristiancmoises/zupt-web"
 LABEL org.opencontainers.image.documentation="https://git.securityops.co/cristiancmoises/zupt-web/src/branch/main/README.md"
@@ -51,9 +51,9 @@ RUN apt-get update && \
     rm -rf /var/lib/apt/lists/*
 
 COPY --from=python-builder /opt/venv /opt/venv
-COPY --from=cli-builder /build/zupt-5.2.8/zupt /usr/local/bin/zupt
-COPY --from=cli-builder /build/zupt-5.2.8/LICENSE* /usr/share/licenses/zupt/
-COPY --from=cli-builder /build/zupt-5.2.8/NOTICE /build/zupt-5.2.8/THIRD-PARTY-NOTICES.md /usr/share/licenses/zupt/
+COPY --from=cli-builder /build/zupt-5.2.9/zupt /usr/local/bin/zupt
+COPY --from=cli-builder /build/zupt-5.2.9/LICENSE* /usr/share/licenses/zupt/
+COPY --from=cli-builder /build/zupt-5.2.9/NOTICE /build/zupt-5.2.9/THIRD-PARTY-NOTICES.md /usr/share/licenses/zupt/
 COPY LICENSE /usr/share/licenses/zupt-web/LICENSE
 
 # Keep the renamed-era command as a compatibility alias; ZUPT is canonical.
@@ -86,3 +86,8 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
 
 ENTRYPOINT ["/usr/bin/tini", "--"]
 CMD ["sh", "-c", "if [ -z \"${ZUPT_SECRET_KEY:-}\" ] && [ -z \"${VAPTVUPT_SECRET_KEY:-}\" ]; then export ZUPT_SECRET_KEY=$(python3 -c 'import secrets; print(secrets.token_hex(32))'); fi; exec gunicorn --bind 0.0.0.0:8080 --workers 2 --worker-tmp-dir /tmp/zupt-work --timeout 660 --graceful-timeout 30 --keep-alive 5 --max-requests 1000 --max-requests-jitter 100 --access-logfile - --error-logfile - app:app"]
+
+# Put the source revision last so changing only VCS_REF does not invalidate the
+# runtime dependency and application layers.
+ARG VCS_REF=unknown
+LABEL org.opencontainers.image.revision="${VCS_REF}"

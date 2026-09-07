@@ -40,17 +40,17 @@ with AGPL-3.0-or-later. Contact:
 BUNDLED COMPONENTS
 --------------------------------------------------------------------------------
 
-This release bundles the official `zupt-5.2.8/` source release. Its licensing
+This release bundles the official `zupt-5.2.9/` source release. Its licensing
 is file-scoped and documented by SPDX markers plus the complete payload in:
 
-  * zupt-5.2.8/LICENSE
-  * zupt-5.2.8/LICENSE-AGPL-3.0
-  * zupt-5.2.8/LICENSE-GPL-3.0
-  * zupt-5.2.8/LICENSE-BSD-2-Clause
-  * zupt-5.2.8/LICENSE-BSD-3-Clause
-  * zupt-5.2.8/LICENSE-CC0-1.0
-  * zupt-5.2.8/NOTICE
-  * zupt-5.2.8/THIRD-PARTY-NOTICES.md
+  * zupt-5.2.9/LICENSE
+  * zupt-5.2.9/LICENSE-AGPL-3.0
+  * zupt-5.2.9/LICENSE-GPL-3.0
+  * zupt-5.2.9/LICENSE-BSD-2-Clause
+  * zupt-5.2.9/LICENSE-BSD-3-Clause
+  * zupt-5.2.9/LICENSE-CC0-1.0
+  * zupt-5.2.9/NOTICE
+  * zupt-5.2.9/THIRD-PARTY-NOTICES.md
 
 Most ZUPT application files are AGPL-3.0-or-later. The embedded VaptVupt
 compression-codec files are GPL-3.0-or-later, with a separately identified

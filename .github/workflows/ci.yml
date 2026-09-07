@@ -41,7 +41,7 @@ jobs:
     runs-on: ubuntu-24.04
     defaults:
       run:
-        working-directory: zupt-5.2.8
+        working-directory: zupt-5.2.9
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
         with:
@@ -53,7 +53,7 @@ jobs:
             build-essential file libarchive-tools python3 unzip
       - name: Verify source-only boundary
         run: |
-          sha256sum --check --strict ../zupt-5.2.8.SHA256SUMS
+          sha256sum --check --strict ../zupt-5.2.9.SHA256SUMS
           bash scripts/check-source-only.sh --tree .
       - name: Build and run downstream gate
         run: |
@@ -78,12 +78,12 @@ jobs:
         with:
           persist-credentials: false
       - name: Build the release image
-        run: docker build --tag zupt-web:5.2.8 .
+        run: docker build --build-arg VCS_REF="$GITHUB_SHA" --tag zupt-web:5.2.9 .
       - name: Verify final-image inventory
         run: |
-          docker run --rm zupt-web:5.2.8 zupt version
-          test "$(docker run --rm --entrypoint id zupt-web:5.2.8 -u)" = 1001
-          if docker run --rm --entrypoint sh zupt-web:5.2.8 -c 'command -v pip || command -v gcc'; then
+          docker run --rm zupt-web:5.2.9 zupt version
+          test "$(docker run --rm --entrypoint id zupt-web:5.2.9 -u)" = 1001
+          if docker run --rm --entrypoint sh zupt-web:5.2.9 -c 'command -v pip || command -v gcc'; then
             echo 'forbidden build tool found in runtime image' >&2
             exit 1
           fi
@@ -93,7 +93,7 @@ jobs:
             --read-only --cap-drop ALL --security-opt no-new-privileges \
             --memory 4g --pids-limit 256 \
             --tmpfs /tmp/zupt-work:size=2G,mode=700,uid=1001,gid=1001 \
-            --publish 127.0.0.1:8181:8080 zupt-web:5.2.8
+            --publish 127.0.0.1:8181:8080 zupt-web:5.2.9
           trap 'docker logs zupt-web-ci; docker rm --force zupt-web-ci' EXIT
           for attempt in $(seq 1 60); do
             if curl --fail --silent http://127.0.0.1:8181/healthz >/dev/null; then
