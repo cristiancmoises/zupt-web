@@ -1,6 +1,6 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 
-# ZUPT Web 5.2.9
+# ZUPT Web 5.2.10
 
 [English](README.md) | [Português do Brasil](README.pt-BR.md)
 
@@ -8,11 +8,13 @@ O ZUPT Web é uma interface web auto-hospedada para o arquivador ZUPT. Ele
 compacta, criptografa, verifica, inspeciona e extrai arquivos `.zupt` sem conta
 externa nem armazenamento em nuvem.
 
-Esta versão compila o código-fonte imutável do ZUPT 5.2.9 com o codec
-VaptVupt 2.65.11. A atualização reforça a validação de limites, fluxos
-truncados, capacidade da saída, metadados de quadro e caudas XXH64. O formato
-de arquivo ZUPT v1.6, as rotas web e os modos criptográficos não mudaram em
-relação ao ZUPT Web 5.2.8.
+Esta versão compila o código-fonte sincronizado do ZUPT 5.2.10 com o codec
+VaptVupt 2.65.13. A atualização prepara somente os buckets alcançáveis do matcher
+para entradas de até 4 KiB e sua pré-passagem inicial nos modos com entropia da
+implementação desktop incluída. Testes de igualdade exata da saída e roundtrip
+verificam a compatibilidade. O formato desktop ZUPT v1.6, as rotas web e os modos criptográficos
+não mudaram em relação ao ZUPT Web 5.2.9. O Android usa o formato independente
+`zupt-android/v1.3`, com STORE e DEFLATE bruto; os arquivos não são intercambiáveis.
 
 ## Execução local
 
@@ -43,7 +45,7 @@ curl -fsS http://127.0.0.1:8181/version
 docker exec zupt-web zupt version
 ```
 
-O endpoint de saúde deve informar `5.2.9`. O endpoint `/version` responde com
+O endpoint de saúde deve informar `5.2.10`. O endpoint `/version` responde com
 HTTP 503 quando o binário do ZUPT não está pronto; ele não mascara essa falha
 como sucesso.
 
@@ -54,7 +56,7 @@ como sucesso.
 | Criptografia híbrida | ML-KEM-768 + X25519 por `--pq` |
 | Criptografia somente pós-quântica | ML-KEM-768 por `--pq-only` |
 | Criptografia por senha | AES-256-CTR + HMAC-SHA256 e PBKDF2-SHA256 |
-| Compactação | AUTO, VaptVupt 2.65.11, LZHP ou Store |
+| Compactação | AUTO, VaptVupt 2.65.13, LZHP ou Store |
 | Validação | trailer autenticado, validação por bloco e extração contida |
 | Implantação | contêiner em três estágios, sem root e com raiz somente leitura |
 
@@ -102,14 +104,9 @@ de recuperação antes de testar a restauração. Consulte
 
 ## Proveniência e testes
 
-O diretório `zupt-5.2.9/` vem do artefato oficial da tag `v5.2.9`, commit
-`63f27dd0c5afcf155f813a069c29f6384d46790c`. O SHA-256 do arquivo-fonte é:
-
-```text
-24e1e3251c0bbcab049d3a7c3f1451e1b824fbb95ef454ca7c03077c8a470171
-```
-
-`build-zupt.sh` verifica os 203 arquivos do manifesto antes de compilar. Para
+O diretório `zupt-5.2.10/` contém a árvore-fonte completa sincronizada do
+candidato de release. Consulte [UPSTREAM.md](UPSTREAM.md) para a proveniência.
+`build-zupt.sh` verifica todos os arquivos do manifesto antes de compilar. Para
 validar a aplicação localmente:
 
 ```sh
@@ -117,7 +114,7 @@ python3 -m venv .venv
 .venv/bin/pip install --require-hashes -r requirements.txt
 .venv/bin/python -m unittest discover -s tests -v
 docker compose config --quiet
-docker build --tag zupt-web:5.2.9 .
+docker build --tag zupt-web:5.2.10 .
 ```
 
 Os resultados executados para esta revisão ficam consolidados em

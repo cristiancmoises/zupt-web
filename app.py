@@ -10,7 +10,7 @@ If you operate a modified version of this software as a network service,
 the AGPL requires you to make your modifications available to your users.
 For commercial licensing inquiries, contact: sac@securityops.co
 
-Backend for the bundled ZUPT CLI (default 5.2.9). ZUPT restored its original
+Backend for the bundled ZUPT CLI (default 5.2.10). ZUPT restored its original
 name in 5.2.2; the `.zupt` archive format and VaptVupt codec name are
 unchanged. ZUPT_* environment variables are canonical, with VAPTVUPT_*
 accepted as compatibility fallbacks for deployments made with 3.0.0–5.2.1.
@@ -41,7 +41,7 @@ from collections import defaultdict
 from flask import (Flask, request, jsonify, send_file, render_template,
                    make_response, abort, g)
 
-APP_VERSION = '5.2.9'   # tracks the bundled ZUPT CLI version
+APP_VERSION = '5.2.10'   # tracks the bundled ZUPT CLI version
 
 
 def env(name, default=None):

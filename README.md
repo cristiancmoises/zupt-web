@@ -6,16 +6,18 @@ ZUPT Web is a self-hosted browser frontend for the ZUPT backup archiver. It
 compresses, encrypts, verifies, inspects, and extracts `.zupt` archives without
 accounts or cloud storage.
 
-This release bundles the immutable **ZUPT 5.2.9** source release with the
-**VaptVupt 2.65.11** compression codec. ZUPT 5.2.2 restored the product's
+This release bundles the synchronized **ZUPT 5.2.10** source tree with the
+**VaptVupt 2.65.13** compression codec. ZUPT 5.2.2 restored the product's
 original name after releases 3.0.0–5.2.1 used VaptVupt; the archive extension
 and format v1.6 did not change.
 
-The 5.2.9 refresh carries the codec's stricter span, truncated-bitstream,
-output-capacity, frame-metadata, and XXH64 tail checks into the web container.
-It also retains ZUPT's read-back verification before a compressed block is
-accepted. The web routes, archive format, and cryptographic modes are unchanged
-from 5.2.8.
+The 5.2.10 refresh prepares only reachable matcher buckets for entropy-capable
+inputs up to 4 KiB and their first-block prepass in the bundled desktop
+implementation. Exact encoder parity and roundtrip tests guard compatibility.
+ZUPT's read-back verification still runs before a compressed block is accepted.
+The web routes, desktop archive format v1.6, and cryptographic modes are unchanged
+from 5.2.9. Android uses its independent `zupt-android/v1.3` format with STORE and
+raw DEFLATE; desktop and Android archives are not interchangeable.
 
 ```bash
 docker compose up -d --build
@@ -24,7 +26,7 @@ docker compose up -d --build
 
 ## Important upgrade note
 
-The official ZUPT 5.2.9 source-only profile deliberately excludes the opaque
+The official ZUPT 5.2.10 source-only profile deliberately excludes the opaque
 `libvuptsdk` binary used by the old web image. Consequently:
 
 - native password, hybrid `--pq`, and full-PQ `--pq-only` workflows are
@@ -35,7 +37,7 @@ The official ZUPT 5.2.9 source-only profile deliberately excludes the opaque
 
 Do not delete your 5.2.1 recovery environment until those archives have been
 restored and re-encrypted with a native mode. See [MIGRATION.md](MIGRATION.md)
-for a safe procedure. ZUPT 5.2.9 can read native `--pq` and `--pq-only`
+for a safe procedure. ZUPT 5.2.10 can read native `--pq` and `--pq-only`
 archives and keys created by 5.2.1; the reverse direction is not guaranteed.
 
 ## Features
@@ -45,7 +47,7 @@ archives and keys created by 5.2.1; the reverse direction is not guaranteed.
 | Hybrid post-quantum encryption | ML-KEM-768 + X25519 via `--pq` |
 | Full post-quantum encryption | ML-KEM-768 via `--pq-only` |
 | Password encryption | AES-256-CTR + HMAC-SHA256; PBKDF2-SHA256 |
-| Compression | AUTO, VaptVupt 2.65.11, LZHP, or Store |
+| Compression | AUTO, VaptVupt 2.65.13, LZHP, or Store |
 | Archive safety | Authenticated integrity trailer, per-block validation, hardened extraction |
 | Backup options | Levels 1–9, solid mode, or block deduplication |
 | Metadata inspection | Format/trailer, UUID, flags, encryption metadata, sizes, block count |
@@ -120,7 +122,7 @@ read-only filesystem and 2 GiB tmpfs. Custom launchers may use `ZUPT_BIN` and
 
 ```bash
 curl -fsS http://localhost:8181/healthz
-# {"ok":true,"service":"zupt-web","version":"5.2.9"}
+# {"ok":true,"service":"zupt-web","version":"5.2.10"}
 
 curl -fsS http://localhost:8181/version  # CLI readiness; 503 when unavailable
 docker exec zupt-web zupt version
@@ -132,9 +134,9 @@ compatibility symlink is retained for scripts written against 3.0.0–5.2.1.
 
 ## Security posture
 
-- Every bundled upstream file is checked against a manifest generated from the
-  verified official ZUPT 5.2.9 release tarball before compilation; the asset's
-  promoted SHA-256 is recorded in [UPSTREAM.md](UPSTREAM.md).
+- Every bundled upstream file is checked against the complete synchronized
+  source manifest before compilation; provenance is recorded in
+  [UPSTREAM.md](UPSTREAM.md).
 - The image builds ZUPT with `WITH_SDK=0 WITH_PQBOX=0`, so it contains no
   opaque SDK/PQBOX binaries and no private build-tree RPATH.
 - Passwords cross the CLI boundary through inherited standard input with
@@ -166,7 +168,7 @@ Browser
 gunicorn (2 workers, uid 1001)
    │
    ▼
-Flask application ── explicit argv + inherited password FD ──▶ ZUPT 5.2.9
+Flask application ── explicit argv + inherited password FD ──▶ ZUPT 5.2.10
    │                                                         (source-only)
    ▼
 tmpfs /tmp/zupt-work ── expiring job directories ──▶ streamed download
@@ -189,10 +191,10 @@ python3 -m venv .venv
 Exercise the bundled CLI directly:
 
 ```bash
-cd zupt-5.2.9
+cd zupt-5.2.10
 bash scripts/check-source-only.sh --tree .
 make clean
-make -j"$(getconf _NPROCESSORS_ONLN 2>/dev/null || printf 1)" \
+make -j2 \
   WITH_SDK=0 WITH_PQBOX=0 V=1
 make WITH_SDK=0 WITH_PQBOX=0 check
 make WITH_SDK=0 WITH_PQBOX=0 test-all
@@ -200,10 +202,8 @@ make sdk-test
 make test-asan-run
 ```
 
-The official release tar intentionally omits three packaging recipes that are
-present only in the Git checkout, so its `release-check` aggregate is not the
-appropriate embedded-source command. The equivalent applicable gates and all
-release evidence are recorded in [AUDIT.md](AUDIT.md).
+The bundled tree includes the source-only packaging checks from the release
+checkout. Build and runtime evidence are recorded in [AUDIT.md](AUDIT.md).
 
 ## Screenshots
 
@@ -228,6 +228,6 @@ ZUPT Web is AGPL-3.0-or-later. The bundled ZUPT source contains separately
 identified AGPL-3.0-or-later, GPL-3.0-or-later, BSD-2-Clause,
 BSD-3-Clause, and CC0-1.0 scopes. Preserve the complete `LICENSE*`, `NOTICE`,
 and `THIRD-PARTY-NOTICES.md` payload when redistributing the image or source.
-See [LICENSE](LICENSE) and `zupt-5.2.9/THIRD-PARTY-NOTICES.md`.
+See [LICENSE](LICENSE) and `zupt-5.2.10/THIRD-PARTY-NOTICES.md`.
 
 Commercial licensing inquiries: `sac@securityops.co`.

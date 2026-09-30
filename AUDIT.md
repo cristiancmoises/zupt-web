@@ -1,4 +1,34 @@
-# ZUPT Web 5.2.9 candidate audit
+# ZUPT Web 5.2.10 candidate audit
+
+## 2026-09-30 candidate validation
+
+The current candidate synchronizes the complete ZUPT 5.2.10 tracked source
+tree with native VaptVupt 2.65.13. Its manifest and source-only audit passed
+before compilation. The results below are local evidence, not a claim that
+an immutable upstream tag, container build, or production deployment exists.
+
+| Check | Result |
+|---|---|
+| Flask unittest suite | PASS: 16 tests |
+| Bundled native source compilation and distro-safe checks | PASS under GNU Guix; optional SDK, loop-device, and package-manager cases retain their documented skips |
+| Final no-RPATH build gate | BLOCKED locally: GNU Guix embeds its system glibc/GCC RUNPATH; gate remains enforced |
+| Compose configuration | PASS |
+| Docker image build | BLOCKED locally: daemon cannot locate `runc` |
+| Live HTTP workflows with native candidate CLI | PASS: 7 stages, 133 assertions, plain/password/hybrid/full-PQ compress-info-verify-extract roundtrips |
+| Chromium 153 via CDP | PASS: current versions, 320/768/1024/1440 px rendering, screenshots after entrance animation, navigation, keyboard focus, accessible navigation names, no console/network errors |
+| Production container and HTTPS deployment | Not validated by these local checks |
+
+Chrome DevTools MCP was unavailable; the browser check used an isolated
+Chromium profile and the native DevTools protocol instead. Browser observations
+were treated as data and did not access credentials. These focused checks do
+not establish full WCAG compliance or Android archive interoperability.
+
+The first local HTTP run used a home-directory scratch path. The native output
+directory pinning requires readable ancestors, while this machine's `/home`
+grants the test user execute-only access. A private `/tmp` scratch directory,
+matching the production container layout, passed every roundtrip.
+
+## Historical 5.2.9 candidate evidence
 
 This document records evidence gathered for the 5.2.9 candidate on 2026-09-06.
 It deliberately separates the published ZUPT upstream release, focused local
