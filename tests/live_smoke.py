@@ -27,7 +27,8 @@ from typing import Mapping
 
 
 DEFAULT_URL = "http://127.0.0.1:8181"
-DEFAULT_VERSION = "5.2.10"
+DEFAULT_VERSION = "5.2.11"
+DEFAULT_CLI_VERSION = "5.2.10"
 PASSWORD = "  -ZUPT live smoke passphrase 2026!  "
 PAYLOAD = (
     b"ZUPT Web live HTTP smoke test\n"
@@ -373,7 +374,8 @@ def round_trip(
     )
 
 
-def run(base_url: str, timeout: float, expected_version: str) -> Audit:
+def run(base_url: str, timeout: float, expected_version: str,
+        expected_cli_version: str = DEFAULT_CLI_VERSION) -> Audit:
     audit = Audit()
     client = HttpClient(base_url, timeout)
     client.add_secret(PASSWORD)
@@ -406,8 +408,8 @@ def run(base_url: str, timeout: float, expected_version: str) -> Audit:
         raise SmokeFailure("version endpoint did not return valid JSON") from exc
     audit.check(version_json.get("ok") is True, "version endpoint reports not-ok")
     audit.check(
-        expected_version in str(version_json.get("version", "")),
-        f"CLI version does not contain {expected_version}",
+        expected_cli_version in str(version_json.get("version", "")),
+        f"CLI version does not contain {expected_cli_version}",
     )
 
     index = client.get("/")
@@ -489,7 +491,12 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     parser.add_argument(
         "--expected-version",
         default=DEFAULT_VERSION,
-        help=f"expected app/CLI version (default: {DEFAULT_VERSION})",
+        help=f"expected Web version (default: {DEFAULT_VERSION})",
+    )
+    parser.add_argument(
+        "--expected-cli-version",
+        default=DEFAULT_CLI_VERSION,
+        help=f"expected bundled CLI version (default: {DEFAULT_CLI_VERSION})",
     )
     args = parser.parse_args(argv)
     if args.timeout <= 0:
@@ -506,7 +513,8 @@ def main(argv: list[str] | None = None) -> int:
     args = parse_args(sys.argv[1:] if argv is None else argv)
     started = time.monotonic()
     try:
-        audit = run(args.base_url, args.timeout, args.expected_version)
+        audit = run(args.base_url, args.timeout, args.expected_version,
+                    args.expected_cli_version)
     except (SmokeFailure, OSError) as exc:
         print(f"FAIL: {exc}", file=sys.stderr)
         return 1

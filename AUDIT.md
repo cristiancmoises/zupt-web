@@ -1,8 +1,34 @@
-# ZUPT Web 5.2.10 candidate audit
+# ZUPT Web 5.2.11 candidate audit
 
-## 2026-09-30 candidate validation
+## 2026-09-30 exact-source checkout/export correction
 
-The current candidate synchronizes the complete ZUPT 5.2.10 tracked source
+Web 5.2.11 retains signed desktop ZUPT 5.2.10 and codec 2.65.13. The immutable
+Web v5.2.10 tag is blocked: its local mixed-EOL batch-file digest rejected a
+pristine Git checkout on the VPS. The old production container was untouched.
+It is not moved or represented as a successful image build.
+
+The new manifest uses signed Git-blob LF digests. Only the two explicitly
+declared Windows batch-file paths accept their exact deterministic pure CRLF
+checkout representation. Mixed/bare-CR endings, tampering, symlinks and
+undeclared transformations fail; the complete source-file set gate remains.
+
+Fresh verification: 28 unit/route/version/manifest tests pass, including an
+actual pristine CRLF Git clone and an all-206-file LF tagged Git-blob export.
+An extracted source snapshot without `.git` also passes: 26 checks execute,
+and only the two Git-history integration checks report explicit skips. Those
+checks require the Git executable, this actual worktree and the immutable tag;
+other regressions are not skipped.
+Both representations pass manifest verification, native compilation and all
+executed distro-safe checks. Their final no-RPATH gate still rejects this
+host's Guix system RUNPATH; it was not weakened. An Ubuntu image build remains
+required. Live HTTP Web 5.2.11 / CLI 5.2.10 checks pass all 133 assertions and
+four credential-mode roundtrips. Chromium CDP checks cover four viewport sizes
+with distinct Web/CLI versions, navigation, accessible names, keyboard focus
+and no console/network errors. These remain local checks, not deployment claims.
+
+## Historical local Web 5.2.10 validation — not promotion evidence
+
+The historical candidate synchronized the complete ZUPT 5.2.10 tracked source
 tree with native VaptVupt 2.65.13. Its manifest and source-only audit passed
 before compilation. The results below are local evidence, not a claim that
 an immutable upstream tag, container build, or production deployment exists.
