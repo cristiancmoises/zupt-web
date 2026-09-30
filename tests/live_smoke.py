@@ -27,7 +27,7 @@ from typing import Mapping
 
 
 DEFAULT_URL = "http://127.0.0.1:8181"
-DEFAULT_VERSION = "5.2.9"
+DEFAULT_VERSION = "5.2.10"
 PASSWORD = "  -ZUPT live smoke passphrase 2026!  "
 PAYLOAD = (
     b"ZUPT Web live HTTP smoke test\n"

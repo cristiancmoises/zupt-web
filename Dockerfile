@@ -2,7 +2,7 @@
 # Copyright (C) 2026 Cristian Cezar Moisés
 # Commercial licensing: sac@securityops.co
 
-# Stage 1: verify and build the immutable ZUPT 5.2.9 source release.
+# Stage 1: verify and build the synchronized ZUPT 5.2.10 source tree.
 FROM ubuntu:24.04 AS cli-builder
 
 RUN apt-get update && \
@@ -11,9 +11,9 @@ RUN apt-get update && \
     rm -rf /var/lib/apt/lists/*
 
 WORKDIR /build
-COPY zupt-5.2.9/ /build/zupt-5.2.9/
+COPY zupt-5.2.10/ /build/zupt-5.2.10/
 COPY build-zupt.sh /build/build-zupt.sh
-COPY zupt-5.2.9.SHA256SUMS /build/zupt-5.2.9.SHA256SUMS
+COPY zupt-5.2.10.SHA256SUMS /build/zupt-5.2.10.SHA256SUMS
 RUN chmod 0755 /build/build-zupt.sh && /build/build-zupt.sh
 
 # Stage 2: resolve the hash-locked Python environment. Build tools and pip do
@@ -37,9 +37,9 @@ FROM ubuntu:24.04
 
 LABEL maintainer="Cristian Cezar Moisés <sac@securityops.co>"
 LABEL description="ZUPT Web — post-quantum backup utility browser frontend"
-LABEL version="5.2.9"
+LABEL version="5.2.10"
 LABEL org.opencontainers.image.title="zupt-web"
-LABEL org.opencontainers.image.version="5.2.9"
+LABEL org.opencontainers.image.version="5.2.10"
 LABEL org.opencontainers.image.licenses="AGPL-3.0-or-later"
 LABEL org.opencontainers.image.source="https://git.securityops.co/cristiancmoises/zupt-web"
 LABEL org.opencontainers.image.documentation="https://git.securityops.co/cristiancmoises/zupt-web/src/branch/main/README.md"
@@ -51,9 +51,9 @@ RUN apt-get update && \
     rm -rf /var/lib/apt/lists/*
 
 COPY --from=python-builder /opt/venv /opt/venv
-COPY --from=cli-builder /build/zupt-5.2.9/zupt /usr/local/bin/zupt
-COPY --from=cli-builder /build/zupt-5.2.9/LICENSE* /usr/share/licenses/zupt/
-COPY --from=cli-builder /build/zupt-5.2.9/NOTICE /build/zupt-5.2.9/THIRD-PARTY-NOTICES.md /usr/share/licenses/zupt/
+COPY --from=cli-builder /build/zupt-5.2.10/zupt /usr/local/bin/zupt
+COPY --from=cli-builder /build/zupt-5.2.10/LICENSE* /usr/share/licenses/zupt/
+COPY --from=cli-builder /build/zupt-5.2.10/NOTICE /build/zupt-5.2.10/THIRD-PARTY-NOTICES.md /usr/share/licenses/zupt/
 COPY LICENSE /usr/share/licenses/zupt-web/LICENSE
 
 # Keep the renamed-era command as a compatibility alias; ZUPT is canonical.

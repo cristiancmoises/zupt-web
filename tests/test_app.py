@@ -21,7 +21,7 @@ class ZuptWebTestCase(unittest.TestCase):
         self.previous_version_ok = zupt_web._VERSION_OK
         zupt_web.WORKDIR = Path(self.tempdir.name)
         zupt_web._rate.clear()
-        zupt_web._VERSION_CACHE = 'zupt 5.2.9 (format v1.6, VaptVupt 2.65.11)'
+        zupt_web._VERSION_CACHE = 'zupt 5.2.10 (format v1.6, VaptVupt 2.65.13)'
         zupt_web._VERSION_OK = True
         zupt_web.app.config.update(TESTING=True)
         self.client = zupt_web.app.test_client()
@@ -44,7 +44,7 @@ class ZuptWebTestCase(unittest.TestCase):
         self.assertEqual(response.get_json(), {
             'ok': True,
             'service': 'zupt-web',
-            'version': '5.2.9',
+            'version': '5.2.10',
         })
         self.assertEqual(response.headers['X-Frame-Options'], 'DENY')
         self.assertEqual(response.headers['X-Content-Type-Options'], 'nosniff')
@@ -67,8 +67,8 @@ class ZuptWebTestCase(unittest.TestCase):
         response = self.client.get('/')
         body = response.get_data(as_text=True)
         self.assertIn('ZUPT CLI', body)
-        self.assertIn('5.2.9', body)
-        self.assertIn('VaptVupt 2.65.11', body)  # codec name is intentional
+        self.assertIn('5.2.10', body)
+        self.assertIn('VaptVupt 2.65.13', body)  # codec name is intentional
         self.assertNotIn('action="/keygen-sdk"', body)
         self.assertNotIn('name="pq_sdk_key"', body)
         self.assertNotIn('fonts.googleapis.com', body)
