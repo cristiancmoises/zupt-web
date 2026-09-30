@@ -13,6 +13,7 @@ RUN apt-get update && \
 WORKDIR /build
 COPY zupt-5.2.10/ /build/zupt-5.2.10/
 COPY build-zupt.sh /build/build-zupt.sh
+COPY verify-vendor.py /build/verify-vendor.py
 COPY zupt-5.2.10.SHA256SUMS /build/zupt-5.2.10.SHA256SUMS
 RUN chmod 0755 /build/build-zupt.sh && /build/build-zupt.sh
 
@@ -37,9 +38,9 @@ FROM ubuntu:24.04
 
 LABEL maintainer="Cristian Cezar Moisés <sac@securityops.co>"
 LABEL description="ZUPT Web — post-quantum backup utility browser frontend"
-LABEL version="5.2.10"
+LABEL version="5.2.11"
 LABEL org.opencontainers.image.title="zupt-web"
-LABEL org.opencontainers.image.version="5.2.10"
+LABEL org.opencontainers.image.version="5.2.11"
 LABEL org.opencontainers.image.licenses="AGPL-3.0-or-later"
 LABEL org.opencontainers.image.source="https://git.securityops.co/cristiancmoises/zupt-web"
 LABEL org.opencontainers.image.documentation="https://git.securityops.co/cristiancmoises/zupt-web/src/branch/main/README.md"

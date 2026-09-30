@@ -9,13 +9,19 @@ signed codec commit `e30dc9329be7cf9f233b1ac0b1fc9ed31f530391`, retaining ZUPT's
 existing GPL notices and wrapper policy. Public availability and cross-OS
 promotion must be checked independently of this local signed source pin.
 
-`zupt-5.2.10.SHA256SUMS` records every regular bundled source file.
-`build-zupt.sh` validates the digest and exact source file set before invoking
-the source-only build gate. Validate from the bundled directory:
+Web 5.2.11 still bundles desktop ZUPT 5.2.10; these version boundaries are
+independent. The immutable Web v5.2.10 tag is blocked by its checkout-EOL
+manifest mismatch and is not moved or represented as deployable.
+
+`zupt-5.2.10.SHA256SUMS` pins canonical Git-blob digests. `verify-vendor.py`
+accepts LF or its exact pure CRLF transformation only for
+`gui/packaging/windows/build-windows.bat` and `packaging/portable/zupt-gui.bat`,
+as declared by the signed source's `.gitattributes`. Mixed/bare-CR endings,
+tampering and every undeclared byte transformation fail. `build-zupt.sh`
+retains the exact source-file set and source-only gates. Validate with:
 
 ```sh
-cd zupt-5.2.10
-sha256sum --check --strict ../zupt-5.2.10.SHA256SUMS
+python3 verify-vendor.py zupt-5.2.10.SHA256SUMS zupt-5.2.10
 ```
 
 Public release packages use genuine unencrypted `.zupt` archives, tested by

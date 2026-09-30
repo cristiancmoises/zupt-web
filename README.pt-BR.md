@@ -1,6 +1,6 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 
-# ZUPT Web 5.2.10
+# ZUPT Web 5.2.11
 
 [English](README.md) | [Português do Brasil](README.pt-BR.md)
 
@@ -8,7 +8,11 @@ O ZUPT Web é uma interface web auto-hospedada para o arquivador ZUPT. Ele
 compacta, criptografa, verifica, inspeciona e extrai arquivos `.zupt` sem conta
 externa nem armazenamento em nuvem.
 
-Esta versão compila o código-fonte sincronizado do ZUPT 5.2.10 com o codec
+O Web 5.2.11 corrige o limite de manifesto entre checkout Git e exportação de
+código-fonte. A tag imutável Web 5.2.10 permanece bloqueada, sem substituição.
+Somente os dois arquivos batch Windows declarados aceitam LF exato ou CRLF
+puro determinístico; finais mistos e adulteração falham. Os demais bytes e a
+lista completa de arquivos permanecem exatos. O CLI incluído é ZUPT 5.2.10 com o codec
 VaptVupt 2.65.13. A atualização prepara somente os buckets alcançáveis do matcher
 para entradas de até 4 KiB e sua pré-passagem inicial nos modos com entropia da
 implementação desktop incluída. Testes de igualdade exata da saída e roundtrip
@@ -45,7 +49,7 @@ curl -fsS http://127.0.0.1:8181/version
 docker exec zupt-web zupt version
 ```
 
-O endpoint de saúde deve informar `5.2.10`. O endpoint `/version` responde com
+O endpoint de saúde deve informar `5.2.11`. O endpoint `/version` responde com
 HTTP 503 quando o binário do ZUPT não está pronto; ele não mascara essa falha
 como sucesso.
 
@@ -114,8 +118,13 @@ python3 -m venv .venv
 .venv/bin/pip install --require-hashes -r requirements.txt
 .venv/bin/python -m unittest discover -s tests -v
 docker compose config --quiet
-docker build --tag zupt-web:5.2.10 .
+docker build --tag zupt-web:5.2.11 .
 ```
+
+Os dois testes de integração checkout/exportação de tag exigem Git e o histórico
+imutável `v5.2.10` desta árvore. Pacotes de código-fonte sem metadados Git
+informam exatamente esses dois testes como ignorados explicitamente; os demais
+26 continuam sendo executados. Com esse histórico Git, os 28 são executados.
 
 Os resultados executados para esta revisão ficam consolidados em
 [AUDIT.md](AUDIT.md); um teste não executado ou bloqueado não é tratado como

@@ -29,9 +29,10 @@ if [ ! -f "$MANIFEST" ]; then
 fi
 
 # The manifest records the complete synchronized release-candidate source.
-# Every upstream file used by the build must
-# still match byte-for-byte; generated build artifacts do not affect this gate.
-sha256sum --check --strict "$MANIFEST"
+# Every source file must match its canonical signed Git blob. Only the two
+# explicitly declared Windows batch files may use Git's pure CRLF checkout
+# bytes; mixed endings and all other byte changes fail closed.
+python3 "$SCRIPT_DIR/verify-vendor.py" "$MANIFEST" .
 
 case "$(sed -n 's/^#define ZUPT_VERSION_STRING "\([^"]*\)".*/\1/p' include/zupt.h)" in
     5.2.10) ;;

@@ -6,7 +6,11 @@ ZUPT Web is a self-hosted browser frontend for the ZUPT backup archiver. It
 compresses, encrypts, verifies, inspects, and extracts `.zupt` archives without
 accounts or cloud storage.
 
-This release bundles the synchronized **ZUPT 5.2.10** source tree with the
+Web **5.2.11** fixes the vendor manifest's Git checkout/source-export boundary;
+the immutable Web 5.2.10 tag remains blocked, not replaced or promoted.
+Only the two declared Windows batch files accept exact LF or deterministic
+pure CRLF bytes; mixed endings and tampering fail. All other bytes and the
+complete source-file set remain exact. This release bundles **ZUPT 5.2.10** with the
 **VaptVupt 2.65.13** compression codec. ZUPT 5.2.2 restored the product's
 original name after releases 3.0.0–5.2.1 used VaptVupt; the archive extension
 and format v1.6 did not change.
@@ -122,7 +126,7 @@ read-only filesystem and 2 GiB tmpfs. Custom launchers may use `ZUPT_BIN` and
 
 ```bash
 curl -fsS http://localhost:8181/healthz
-# {"ok":true,"service":"zupt-web","version":"5.2.10"}
+# {"ok":true,"service":"zupt-web","version":"5.2.11"}
 
 curl -fsS http://localhost:8181/version  # CLI readiness; 503 when unavailable
 docker exec zupt-web zupt version
@@ -187,6 +191,11 @@ python3 -m venv .venv
 .venv/bin/pip install --require-hashes -r requirements.txt
 .venv/bin/python -m unittest discover -s tests -v
 ```
+
+The two Git checkout/tag-export integration tests require the Git executable
+and this worktree's immutable `v5.2.10` history. A source-package extraction
+without Git metadata reports exactly those two checks as explicit skips;
+the other 26 tests still run. Git worktrees with that history run all 28.
 
 Exercise the bundled CLI directly:
 
