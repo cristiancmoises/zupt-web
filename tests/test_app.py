@@ -44,7 +44,7 @@ class ZuptWebTestCase(unittest.TestCase):
         self.assertEqual(response.get_json(), {
             'ok': True,
             'service': 'zupt-web',
-            'version': '5.2.11',
+            'version': '5.2.12',
         })
         self.assertEqual(response.headers['X-Frame-Options'], 'DENY')
         self.assertEqual(response.headers['X-Content-Type-Options'], 'nosniff')
@@ -67,7 +67,7 @@ class ZuptWebTestCase(unittest.TestCase):
         response = self.client.get('/')
         body = response.get_data(as_text=True)
         self.assertIn('ZUPT CLI', body)
-        self.assertIn('5.2.11', body)
+        self.assertIn('5.2.12', body)
         self.assertIn('VaptVupt 2.65.13', body)  # codec name is intentional
         self.assertNotIn('action="/keygen-sdk"', body)
         self.assertNotIn('name="pq_sdk_key"', body)

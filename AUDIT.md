@@ -1,4 +1,43 @@
-# ZUPT Web 5.2.11 candidate audit
+# ZUPT Web 5.2.12 candidate audit
+
+## 2026-10-01 corrected desktop source
+
+Web 5.2.12 imports all 206 regular Git blobs from signed desktop commit
+`24995eb7652a31eedc46386bab14c63cbb31e050`, the corrected ZUPT 5.2.10 source.
+The manifest SHA-256 is
+`bbdbfb4fa59f461422d972c0af6c8f42b300b61b306cd176e627e3e6d6d11234`.
+Archive format 1.6, codec 2.65.13, Web routes and dependency locks are unchanged.
+The desktop fixes disable terminal echo before displaying a password prompt
+and safely restore terminal state after signal interruption; Web passwords
+continue to use an inherited descriptor, never password argv.
+
+The immutable historical Web v5.2.10 and v5.2.11 tags are unchanged. Each
+historical export is tested against its own manifest: v5.2.10 must return the
+exact known batch-file checksum error, while corrected v5.2.11 must pass.
+Neither historical result is inferred from the new manifest.
+
+| Check | Current local result |
+|---|---|
+| Exact desktop Git-blob comparison and manifest | PASS: all 206 paths; complete LF and the two declared pure CRLF batch-file representations |
+| Unit/route/version/manifest suite, warnings as errors | PASS: all 28 tests |
+| Source export without Git metadata | PASS: 26 checks execute; only two historical Git integrations explicitly skip |
+| Native source compilation and executed distro-safe checks | PASS, including corrected POSIX prompt regressions and the original v5.2.1 encrypted/deduplicated disk fixture; optional SDK, loop-device and unavailable-tool checks retain their explicit skips |
+| Final no-RPATH build gate | FAIL on this Guix host: system RUNPATH remains; the gate is unchanged |
+| ShellCheck, shell syntax, Python byte compilation and Compose model | PASS |
+| Local container runtime probe | BLOCKED: daemon cannot locate `runc`; no image build or container readiness is claimed |
+| Live Gunicorn HTTP with corrected native CLI | PASS: 7 stages, 133 assertions, four credential-mode roundtrips |
+| Original/corrected desktop 5.2.10 compatibility | PASS: eight bidirectional level-9 VaptVupt info/test/extract workflows, covering plain/password/hybrid/full-PQ with byte-exact recovery |
+| Isolated Chromium 153 via CDP | PASS: 320/768/1024/1440 px, distinct Web/CLI/codec versions, corrected-source text, no page overflow, navigation, accessible button names, keyboard focus and no console/network errors |
+| Downstream committed image and production deployment | Not validated by these local checks |
+
+Chrome DevTools MCP was unavailable; the existing isolated DevTools profile
+was used without inspecting credential state. Screenshots wait for the page
+entrance animation. These focused checks do not establish full WCAG compliance
+or Android interoperability. Raw logs, exit results and screenshots are retained
+in the separate delivery-evidence directory; earlier failed runs are preserved.
+The additional compatibility fixtures use private `/tmp` workspaces for the
+native output-root pinning contract. Their first home-directory attempt failed
+on unreadable ancestors and is retained, not counted as a passing workflow.
 
 ## 2026-09-30 exact-source checkout/export correction
 

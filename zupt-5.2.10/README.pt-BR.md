@@ -4,10 +4,17 @@
 
 [English](README.md) | Português do Brasil
 
+Este README descreve o código-fonte 5.2.10. Os downloads publicados e seu estado
+de validação estão na [página de releases](https://github.com/cristiancmoises/zupt/releases/latest);
+a versão do código ou uma tag Git, isoladamente, não significa que os pacotes
+já foram publicados.
+
 ZUPT é um arquivador de backup em C11. Ele combina o codec VaptVupt incluído
 como código-fonte com criptografia autenticada AES-256-CTR + HMAC-SHA256,
 criptografia híbrida ML-KEM-768/X25519, verificação de integridade, execução
 multithread e uma interface gráfica opcional em Python/Qt.
+
+Disponível para openSUSE: [download e atualização](#pacotes-opensuse).
 
 ## O que muda na versão 5.2.10
 
@@ -17,12 +24,63 @@ multithread e uma interface gráfica opcional em Python/Qt.
   hash3 pela cadeia real e inicializa explicitamente a raiz da árvore Huffman.
 - Preserva a política do adaptador do ZUPT e sua verificação por
   descompactação e comparação antes de aceitar um bloco comprimido.
+- Desativa o eco antes de mostrar o prompt POSIX de senha e usa uma espera
+  atômica por sinais. Leituras não bloqueantes evitam travamento quando o
+  terminal descarta a entrada; ao sair, restaura a configuração do terminal
+  e os flags originais do descritor. Os testes cobrem os quatro sinais,
+  confirmação, entrada descartada e limites de tamanho de senha.
 - Não altera o formato de arquivo 1.6, o identificador de codec `0x0010`, a
   interface de linha de comando nem a ABI pública do SDK.
 
 O suporte a contexto FAST sem alocação faz parte da biblioteca VaptVupt, mas o
 ZUPT continua usando quadros independentes pela API tradicional. O programa não
 depende de módulo do kernel.
+
+O prompt Windows e a gramática dos arquivos permanecem inalterados.
+
+## Pacotes openSUSE
+
+O ZUPT está disponível para openSUSE pelo projeto comunitário OBS
+[`home:cabelo:innovators`](https://build.opensuse.org/project/show/home:cabelo:innovators).
+Use a [página do pacote openSUSE](https://software.opensuse.org/package/zupt)
+para selecionar sua distribuição ou consulte os repositórios de download
+verificados para
+[Leap 16.0](https://download.opensuse.org/repositories/home:/cabelo:/innovators/16.0/)
+e [Tumbleweed](https://download.opensuse.org/repositories/home:/cabelo:/innovators/openSUSE_Tumbleweed/).
+Escolha a versão do sistema e a arquitetura corretas; confira o repositório e
+sua chave de assinatura antes de habilitá-lo. São pacotes comunitários, não uma
+alegação de aceitação no Factory ou inclusão nos repositórios padrão.
+
+Na verificação de 2026-09-30, ambos os repositórios x86_64 oferecem ZUPT
+**5.2.9**. Essa versão downstream é diferente da **5.2.10** deste repositório;
+não presuma que inclui a atualização de codec desta versão.
+
+Depois de habilitar o repositório correspondente em um sistema openSUSE não
+transacional:
+
+```sh
+sudo zypper refresh
+sudo zypper install zupt
+```
+
+Para atualizar um pacote já instalado pelos repositórios configurados:
+
+```sh
+sudo zypper refresh
+sudo zypper update zupt
+zupt --version
+```
+
+Revise a transação proposta; não desative verificações de assinatura nem force
+a troca de fornecedor. Esses comandos não fazem uma atualização de distribuição
+do Tumbleweed. Consulte o
+[guia do Zypper](https://doc.opensuse.org/documentation/tumbleweed/zypper/)
+para gerenciar repositórios e atualizações do sistema.
+
+Agradecemos a Alessandro de Oliveira Faria
+([Cabelo](https://build.opensuse.org/users/cabelo)) pela ajuda na manutenção do
+pacote comunitário openSUSE. Essa colaboração downstream não implica autoria do
+código-fonte upstream.
 
 ## Compilação rápida
 
@@ -104,10 +162,11 @@ como assinado.
 
 ## Código-fonte e procedência do codec
 
-As receitas AUR, Homebrew e Guix mantêm explicitamente a versão 5.2.9 e seus
-hashes verificados. Não representam pacotes 5.2.10. Uma atualização separada
-após a tag imutável pode fixar o arquivo de fonte gerado pelo forge, sem
-alterar a tag ou publicar um novo tarball.
+A tag imutável `v5.2.10` mantém as receitas históricas AUR, Homebrew e Guix
+da versão 5.2.9. Uma atualização de empacotamento separada fixa essas receitas
+no arquivo de fonte verificado, gerado pelo forge para a tag exata 5.2.10,
+sem alterar a tag ou publicar um novo tarball. A verificação dos pins não
+representa teste nativo de instalação AUR, Homebrew ou Guix.
 
 O codec incluído integra o VaptVupt 2.65.13 no commit
 `e30dc9329be7cf9f233b1ac0b1fc9ed31f530391`, com adaptações do ZUPT preservadas.

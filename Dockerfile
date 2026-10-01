@@ -38,9 +38,9 @@ FROM ubuntu:24.04
 
 LABEL maintainer="Cristian Cezar Moisés <sac@securityops.co>"
 LABEL description="ZUPT Web — post-quantum backup utility browser frontend"
-LABEL version="5.2.11"
+LABEL version="5.2.12"
 LABEL org.opencontainers.image.title="zupt-web"
-LABEL org.opencontainers.image.version="5.2.11"
+LABEL org.opencontainers.image.version="5.2.12"
 LABEL org.opencontainers.image.licenses="AGPL-3.0-or-later"
 LABEL org.opencontainers.image.source="https://git.securityops.co/cristiancmoises/zupt-web"
 LABEL org.opencontainers.image.documentation="https://git.securityops.co/cristiancmoises/zupt-web/src/branch/main/README.md"

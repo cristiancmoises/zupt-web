@@ -10,7 +10,7 @@ services:
   zupt:
     build:
       context: .
-    image: zupt-web:5.2.11
+    image: zupt-web:5.2.12
     container_name: zupt-web
     pull_policy: build       # never try to pull from a registry; build locally
     ports:

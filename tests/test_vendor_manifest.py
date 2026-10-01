@@ -27,11 +27,12 @@ class VendorManifestTests(unittest.TestCase):
             capture_output=True, text=True, check=False)
         if top.returncode or Path(top.stdout.strip()).resolve() != PROJECT:
             self.skipTest('Git checkout integration requires this source tree to be a Git worktree')
-        history = subprocess.run(
-            ['git', '-C', str(PROJECT), 'rev-parse', '--verify', 'v5.2.10:zupt-5.2.10'],
-            capture_output=True, text=True, check=False)
-        if history.returncode:
-            self.skipTest('Git checkout integration requires immutable v5.2.10 vendor history')
+        for tag in ('v5.2.10', 'v5.2.11'):
+            history = subprocess.run(
+                ['git', '-C', str(PROJECT), 'rev-parse', '--verify', f'{tag}:zupt-5.2.10'],
+                capture_output=True, text=True, check=False)
+            if history.returncode:
+                self.skipTest(f'Git checkout integration requires immutable {tag} vendor history')
 
     def verify(self, root, manifest):
         return subprocess.run(
@@ -111,29 +112,38 @@ class VendorManifestTests(unittest.TestCase):
                 data = source.joinpath(path).read_bytes()
                 self.assertIn(b'\r\n', data)
                 self.assertNotIn(b'\n', data.replace(b'\r\n', b''))
-            result = self.verify(source, MANIFEST)
+            result = self.verify(source, clone / MANIFEST.name)
             self.assertEqual(result.returncode, 0, result.stderr)
 
-    def test_signed_tag_git_blob_export_with_lf(self):
+    def test_historical_tag_exports_use_their_own_manifests(self):
         self.require_git_history()
-        with tempfile.TemporaryDirectory() as temporary:
-            root = Path(temporary)
-            entries = subprocess.check_output([
-                'git', '-C', str(PROJECT), 'ls-tree', '-r', '-z', 'v5.2.10:zupt-5.2.10'])
-            for entry in entries.split(b'\0'):
-                if not entry:
-                    continue
-                metadata, filename = entry.split(b'\t', 1)
-                mode, kind, oid = metadata.decode().split()
-                self.assertEqual(kind, 'blob')
-                path = root / os.fsdecode(filename)
-                path.parent.mkdir(parents=True, exist_ok=True)
-                path.write_bytes(subprocess.check_output(['git', '-C', str(PROJECT), 'cat-file', 'blob', oid]))
-                path.chmod(int(mode, 8) & 0o777)
-            for path in (BATCH, PORTABLE):
-                self.assertNotIn(b'\r', root.joinpath(path).read_bytes())
-            result = self.verify(root, MANIFEST)
-            self.assertEqual(result.returncode, 0, result.stderr)
+        for tag in ('v5.2.10', 'v5.2.11'):
+            with self.subTest(tag=tag), tempfile.TemporaryDirectory() as temporary:
+                root = Path(temporary) / 'source'
+                root.mkdir()
+                manifest = Path(temporary) / MANIFEST.name
+                manifest.write_bytes(subprocess.check_output([
+                    'git', '-C', str(PROJECT), 'show', f'{tag}:{MANIFEST.name}']))
+                entries = subprocess.check_output([
+                    'git', '-C', str(PROJECT), 'ls-tree', '-r', '-z', f'{tag}:zupt-5.2.10'])
+                for entry in entries.split(b'\0'):
+                    if not entry:
+                        continue
+                    metadata, filename = entry.split(b'\t', 1)
+                    mode, kind, oid = metadata.decode().split()
+                    self.assertEqual(kind, 'blob')
+                    path = root / os.fsdecode(filename)
+                    path.parent.mkdir(parents=True, exist_ok=True)
+                    path.write_bytes(subprocess.check_output(['git', '-C', str(PROJECT), 'cat-file', 'blob', oid]))
+                    path.chmod(int(mode, 8) & 0o777)
+                for path in (BATCH, PORTABLE):
+                    self.assertNotIn(b'\r', root.joinpath(path).read_bytes())
+                result = self.verify(root, manifest)
+                if tag == 'v5.2.10':
+                    self.assertEqual(result.returncode, 1)
+                    self.assertEqual(result.stderr.strip(), f'Error: Source checksum mismatch: {BATCH}')
+                else:
+                    self.assertEqual(result.returncode, 0, result.stderr)
 
 
 if __name__ == '__main__':
