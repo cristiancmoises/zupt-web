@@ -20,7 +20,7 @@ jobs:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
         with:
           persist-credentials: false
-          fetch-depth: 0 # The regression verifies immutable v5.2.10 Git blobs.
+          fetch-depth: 0 # The regression verifies immutable historical Web tags.
       - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
         with:
           python-version: '3.12'
@@ -79,12 +79,12 @@ jobs:
         with:
           persist-credentials: false
       - name: Build the release image
-        run: docker build --build-arg VCS_REF="$GITHUB_SHA" --tag zupt-web:5.2.11 .
+        run: docker build --build-arg VCS_REF="$GITHUB_SHA" --tag zupt-web:5.2.12 .
       - name: Verify final-image inventory
         run: |
-          docker run --rm zupt-web:5.2.11 zupt version
-          test "$(docker run --rm --entrypoint id zupt-web:5.2.11 -u)" = 1001
-          if docker run --rm --entrypoint sh zupt-web:5.2.11 -c 'command -v pip || command -v gcc'; then
+          docker run --rm zupt-web:5.2.12 zupt version
+          test "$(docker run --rm --entrypoint id zupt-web:5.2.12 -u)" = 1001
+          if docker run --rm --entrypoint sh zupt-web:5.2.12 -c 'command -v pip || command -v gcc'; then
             echo 'forbidden build tool found in runtime image' >&2
             exit 1
           fi
@@ -94,7 +94,7 @@ jobs:
             --read-only --cap-drop ALL --security-opt no-new-privileges \
             --memory 4g --pids-limit 256 \
             --tmpfs /tmp/zupt-work:size=2G,mode=700,uid=1001,gid=1001 \
-            --publish 127.0.0.1:8181:8080 zupt-web:5.2.11
+            --publish 127.0.0.1:8181:8080 zupt-web:5.2.12
           trap 'docker logs zupt-web-ci; docker rm --force zupt-web-ci' EXIT
           for attempt in $(seq 1 60); do
             if curl --fail --silent http://127.0.0.1:8181/healthz >/dev/null; then

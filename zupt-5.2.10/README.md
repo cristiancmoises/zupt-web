@@ -2,10 +2,16 @@
 
 [English](README.md) | [Português do Brasil](README.pt-BR.md)
 
+This README describes the 5.2.10 source. Published downloads and their validation
+status are listed on the [release page](https://github.com/cristiancmoises/zupt/releases/latest);
+a source version or Git tag alone does not mean packages have been published.
+
 ZUPT is a command-line backup archiver written in C11. It combines the
 bundled VaptVupt compression codec with authenticated AES-256-CTR +
 HMAC-SHA256 encryption, native ML-KEM-768/X25519 hybrid encryption, archive
 integrity checks, multithreaded operation, and a Python/Qt graphical frontend.
+
+Available for openSUSE: [download and update instructions](#opensuse-and-obs).
 
 Version 5.2.10 updates the bundled VaptVupt codec from 2.65.11 to 2.65.13.
 It prepares only reachable matcher buckets for small BALANCED/EXTREME inputs
@@ -14,6 +20,13 @@ initializes the Huffman tree root explicitly. Zupt retains its parser guards,
 secure-wipe fallback, wrapper policy, licensing notices, and read-back check.
 Archive format 1.6, codec identifier `0x0010`, CLI behavior, and SDK ABI remain
 unchanged. Release assets require fresh checks against the exact tagged source.
+
+The POSIX password prompt now disables echo before displaying the prompt and
+waits for input with an atomic signal transition. Nonblocking reads handle
+terminal input flushing without hanging, and cleanup restores the original
+terminal settings and descriptor flags. Regression tests cover all four handled
+signals, prompt ordering, flushed input, confirmation and password-size limits.
+The Windows prompt and archive grammar are unchanged.
 
 Version 5.2.8 closes three CodeQL High path-race findings: SDK key copies now
 publish atomically through an already-open private object, POSIX disk restore
@@ -464,10 +477,11 @@ distribution is claimed merely because the code has a fallback path.
 
 ## Source archive
 
-The AUR, Homebrew and Guix recipes explicitly retain the verified 5.2.9
-archive and checksum. They are historical recipes, not 5.2.10 package claims.
-A separate post-tag packaging update can pin the forge-generated source
-archive without changing the immutable release tag or uploading a tarball.
+The immutable `v5.2.10` source tag retains the historical 5.2.9 AUR, Homebrew
+and Guix recipes. A separate post-tag packaging follow-up pins those recipes
+to the verified forge-generated source archive of the exact 5.2.10 tag,
+without changing that tag or uploading a public tarball. Native AUR/Homebrew/
+Guix installation results are not implied by the source pin verification.
 
 Publish new source releases as unencrypted `.zupt` archives. The release
 procedure exports the exact tagged tree into a private staging directory,
@@ -489,6 +503,40 @@ release asset. AUR, Homebrew and Guix recipe hashes refer to their declared
 source input and require independent validation when that input changes.
 
 ## openSUSE and OBS
+
+ZUPT is available for openSUSE through the community OBS project
+[`home:cabelo:innovators`](https://build.opensuse.org/project/show/home:cabelo:innovators).
+Use the [openSUSE package page](https://software.opensuse.org/package/zupt)
+to choose your distribution, or browse the verified download repositories for
+[Leap 16.0](https://download.opensuse.org/repositories/home:/cabelo:/innovators/16.0/)
+and [Tumbleweed](https://download.opensuse.org/repositories/home:/cabelo:/innovators/openSUSE_Tumbleweed/).
+Select the matching OS release and architecture; inspect the repository and its
+signing key before enabling it. These are community packages, not a claim of
+Factory acceptance or inclusion in the default distribution repositories.
+
+As checked on 2026-09-30, both x86_64 repositories offer ZUPT **5.2.9**.
+That downstream version is separate from this repository's **5.2.10** release;
+do not assume that it includes this release's codec update.
+
+After enabling the matching repository on a non-transactional openSUSE system:
+
+~~~sh
+sudo zypper refresh
+sudo zypper install zupt
+~~~
+
+To update an already installed package from your configured repositories:
+
+~~~sh
+sudo zypper refresh
+sudo zypper update zupt
+zupt --version
+~~~
+
+Review the proposed transaction; do not disable signature checks or force a
+vendor change. These commands do not perform a Tumbleweed distribution upgrade.
+See the [openSUSE Zypper guide](https://doc.opensuse.org/documentation/tumbleweed/zypper/)
+for repository management and system-update guidance.
 
 The maintained upstream recipe is in packaging/opensuse. It targets the
 immutable v5.2.10 tag, disables submodules and Git LFS, builds with
@@ -545,7 +593,9 @@ the author of the current upstream source, build, test, documentation, and
 packaging changes, including the 5.2.2 baseline and corrective
 5.2.3/5.2.4/5.2.5/5.2.6/5.2.7/5.2.8/5.2.10 work.
 
-Alessandro de Oliveira Faria (Cabelo) is credited as the openSUSE collaborator
+Thank you to Alessandro de Oliveira Faria
+([Cabelo](https://build.opensuse.org/users/cabelo)) for helping maintain the
+community openSUSE package. He is credited as the openSUSE collaborator
 and downstream package maintainer. He reviews the handoff, commits it in the
 OBS project he maintains, and may make the additional openSUSE-side adjustments
 he considers necessary. That downstream role is not attribution of ZUPT source

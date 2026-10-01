@@ -41,7 +41,7 @@ from collections import defaultdict
 from flask import (Flask, request, jsonify, send_file, render_template,
                    make_response, abort, g)
 
-APP_VERSION = '5.2.11'   # Web release; bundled ZUPT CLI remains 5.2.10
+APP_VERSION = '5.2.12'   # Web release; bundled ZUPT CLI remains 5.2.10
 
 
 def env(name, default=None):

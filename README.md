@@ -6,8 +6,10 @@ ZUPT Web is a self-hosted browser frontend for the ZUPT backup archiver. It
 compresses, encrypts, verifies, inspects, and extracts `.zupt` archives without
 accounts or cloud storage.
 
-Web **5.2.11** fixes the vendor manifest's Git checkout/source-export boundary;
-the immutable Web 5.2.10 tag remains blocked, not replaced or promoted.
+Web **5.2.12** bundles the corrected desktop source pinned in [UPSTREAM.md](UPSTREAM.md).
+The immutable Web 5.2.10 and 5.2.11 tags remain historical and unchanged;
+Web 5.2.10 retains its known checkout-EOL manifest failure. The exact
+Git checkout/source-export boundary introduced in Web 5.2.11 is preserved.
 Only the two declared Windows batch files accept exact LF or deterministic
 pure CRLF bytes; mixed endings and tampering fail. All other bytes and the
 complete source-file set remain exact. This release bundles **ZUPT 5.2.10** with the
@@ -19,6 +21,9 @@ The 5.2.10 refresh prepares only reachable matcher buckets for entropy-capable
 inputs up to 4 KiB and their first-block prepass in the bundled desktop
 implementation. Exact encoder parity and roundtrip tests guard compatibility.
 ZUPT's read-back verification still runs before a compressed block is accepted.
+The corrected desktop source disables POSIX terminal echo before displaying
+password prompts and restores terminal state after signal interruption. Web
+passwords continue to use the inherited password descriptor rather than argv.
 The web routes, desktop archive format v1.6, and cryptographic modes are unchanged
 from 5.2.9. Android uses its independent `zupt-android/v1.3` format with STORE and
 raw DEFLATE; desktop and Android archives are not interchangeable.
@@ -126,7 +131,7 @@ read-only filesystem and 2 GiB tmpfs. Custom launchers may use `ZUPT_BIN` and
 
 ```bash
 curl -fsS http://localhost:8181/healthz
-# {"ok":true,"service":"zupt-web","version":"5.2.11"}
+# {"ok":true,"service":"zupt-web","version":"5.2.12"}
 
 curl -fsS http://localhost:8181/version  # CLI readiness; 503 when unavailable
 docker exec zupt-web zupt version
@@ -193,7 +198,9 @@ python3 -m venv .venv
 ```
 
 The two Git checkout/tag-export integration tests require the Git executable
-and this worktree's immutable `v5.2.10` history. A source-package extraction
+and this worktree's immutable `v5.2.10` and `v5.2.11` history. Each historical
+snapshot uses its own manifest: the known-invalid v5.2.10 export is rejected,
+and the corrected v5.2.11 export passes. A source-package extraction
 without Git metadata reports exactly those two checks as explicit skips;
 the other 26 tests still run. Git worktrees with that history run all 28.
 
