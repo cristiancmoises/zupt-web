@@ -79,6 +79,12 @@ if [ "$verify_only" -eq 1 ]; then
     exit 0
 fi
 
+# These verified wrappers execute themselves through fixture symlinks.
+# Source-package extraction leaves them at 0600; other test inputs stay data.
+chmod u+x tests/test_frama_aes_nist_wrapper.sh \
+    tests/test_frama_ans_decode_bounds_wrapper.sh \
+    tests/test_jasmin_source_wrapper.sh
+
 jobs=${ZUPT_BUILD_JOBS:-2}
 case "$jobs" in
     ''|*[!0-9]*|0*) jobs=1 ;;

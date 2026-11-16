@@ -41,6 +41,9 @@ class SourceGateTests(unittest.TestCase):
             "clean all check:\n\t@echo unexpected-build >&2; exit 23\n"
         )
         self.manifest = self.root / "zupt-5.2.10.SHA256SUMS"
+        self.write_manifest()
+
+    def write_manifest(self):
         self.manifest.write_text(
             "".join(
                 f"{hashlib.sha256(p.read_bytes()).hexdigest()}  "
@@ -100,6 +103,61 @@ class SourceGateTests(unittest.TestCase):
             "symlink or special file" in result.stderr
             or "Not a regular source file" in result.stderr
         )
+
+    def test_build_restores_self_executing_fixtures_from_extracted_modes(self):
+        project = Path(__file__).resolve().parents[1]
+        wrappers = (
+            "test_frama_aes_nist_wrapper.sh",
+            "test_frama_ans_decode_bounds_wrapper.sh",
+            "test_jasmin_source_wrapper.sh",
+        )
+        tests = self.source / "tests"
+        tests.mkdir()
+        for name in wrappers:
+            target = tests / name
+            target.write_bytes((project / "zupt-5.2.10/tests" / name).read_bytes())
+            target.chmod(0o600)
+        data = tests / "not-an-entrypoint.sh"
+        data.write_text("nonexecutable data\n")
+        data.chmod(0o600)
+        self.write_manifest()
+        # Compile/check doubles exercise real upstream fixtures, not a native build.
+        (self.bin / "make").write_text(
+            """#!/bin/sh
+set -eu
+case " $* " in *" clean "*|*" check "*) exit 0 ;; esac
+ln -s "$PWD/tests/test_frama_aes_nist_wrapper.sh" "$SOURCE_GATE_PROBE_DIR/frama-aes-fixture"
+ln -s "$PWD/tests/test_frama_ans_decode_bounds_wrapper.sh" "$SOURCE_GATE_PROBE_DIR/frama-bounds-fixture"
+ln -s "$PWD/tests/test_jasmin_source_wrapper.sh" "$SOURCE_GATE_PROBE_DIR/jasmin-warning-version"
+FRAMA_AES_CASE=clean "$SOURCE_GATE_PROBE_DIR/frama-aes-fixture" -version
+FRAMA_BOUNDS_CASE=clean "$SOURCE_GATE_PROBE_DIR/frama-bounds-fixture" -version
+"$SOURCE_GATE_PROBE_DIR/jasmin-warning-version" --version
+printf '#!/bin/sh\\nprintf "test CLI double\\\\n"\\n' > zupt
+chmod 700 zupt
+"""
+        )
+        for name in ("strip", "readelf"):
+            helper = self.bin / name
+            helper.write_text("#!/bin/sh\nexit 0\n")
+            helper.chmod(0o700)
+        before = {name: (tests / name).read_bytes() for name in wrappers}
+        result = subprocess.run(
+            ["sh", str(self.root / "build-zupt.sh")],
+            capture_output=True,
+            text=True,
+            timeout=10,
+            check=False,
+            env={
+                **os.environ,
+                "PATH": str(self.bin) + os.pathsep + os.environ["PATH"],
+                "SOURCE_GATE_PROBE_DIR": str(self.bin),
+            },
+        )
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        for name in wrappers:
+            self.assertTrue(os.access(tests / name, os.X_OK))
+            self.assertEqual((tests / name).read_bytes(), before[name])
+        self.assertEqual(data.stat().st_mode & 0o777, 0o600)
 
 
 if __name__ == "__main__":

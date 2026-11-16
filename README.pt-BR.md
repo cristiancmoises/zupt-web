@@ -134,6 +134,11 @@ símbolos e rejeita RPATH/RUNPATH. A matriz completa está em [AUDIT.md](AUDIT.m
 a verificação de assinatura do fonte e o manifesto dos 294 arquivos estão em
 [UPSTREAM.md](UPSTREAM.md). Resultados do núcleo não validam o serviço web.
 
+Após a verificação, o script de build restaura a execução somente dos três
+wrappers de teste do Zupt que chamam a si mesmos por symlinks de fixtures. A imagem
+mantém o código público e as licenças legíveis e pertencentes ao root; o
+diretório privado do serviço permanece com modo 0700.
+
 A CI atende `main`, `5.2.13`, pull requests e execução manual. A imagem depende
 dos jobs Web e CLI. Somente após o inventário da imagem e os testes HTTP dos
 modos criptográficos passarem, exporta um artefato Docker com `SHA256SUMS`,

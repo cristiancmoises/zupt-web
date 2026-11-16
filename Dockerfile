@@ -69,9 +69,13 @@ COPY app.py /opt/zupt/app.py
 COPY templates/ /opt/zupt/templates/
 COPY static/ /opt/zupt/static/
 
-RUN useradd --system --no-create-home --shell /usr/sbin/nologin --uid 1001 zupt && \
+RUN find /opt/zupt /usr/share/licenses/zupt /usr/share/licenses/zupt-web \
+      -type d -exec chmod 0755 {} + && \
+    find /opt/zupt /usr/share/licenses/zupt /usr/share/licenses/zupt-web \
+      -type f -exec chmod 0644 {} + && \
+    useradd --system --no-create-home --shell /usr/sbin/nologin --uid 1001 zupt && \
     mkdir -p /tmp/zupt-work && \
-    chown zupt:zupt /tmp/zupt-work /opt/zupt && \
+    chown zupt:zupt /tmp/zupt-work && \
     chmod 0700 /tmp/zupt-work
 
 USER zupt

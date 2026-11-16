@@ -44,6 +44,14 @@ It sets files to 0600 and directories to 0700, restores only the three documente
 entry points, then builds and tests that image. The inventory checks public
 runtime files as uid 1001 before the live smoke and image export gates.
 
+After checking every source digest and path, the build wrapper restores `u+x`
+only on `test_frama_aes_nist_wrapper.sh`,
+`test_frama_ans_decode_bounds_wrapper.sh`, and `test_jasmin_source_wrapper.sh`
+under the vendor `tests/` directory. Their synthetic tools are symlinks to the
+wrappers themselves. The final image normalizes only public application and
+license directories to 0755 and files to 0644, retaining root ownership and the
+service-owned mode-0700 work directory.
+
 The manifest verifier retains the two declared LF/CRLF checkout variants and
 rejects all other transformations. The existing historical tests read each
 immutable Web tag with its own manifest. Gitless source exports report those
@@ -113,6 +121,7 @@ upstream formal results as production HTTPS validation.
 | Web 5.2.9 initial uncached build | Password PTY timing test failed; unchanged retry passed; 99/100 focused repeats passed | Timing-sensitive failure retained; Web uses `--pass-fd 0`, not the interactive prompt |
 | Web 5.2.10 historical tag | Rejected by its checkout-EOL manifest mismatch | Immutable failure retained; no retagging |
 | Web 5.2.11 / 5.2.12 source gates | Declared LF/CRLF verifier and historical-manifest regressions | Retained in 5.2.13; older results are not a new execution |
+| Web 5.2.13 CI [43806245612](https://github.com/cristiancmoises/zupt-web/actions/runs/43806245612) | Image build failed when a 0600 Frama-AES wrapper was executed through its fixture symlink | Web/core jobs passed; final-image readability was not reached |
 | ZUPT 5.2.10 core | [Official release](https://github.com/cristiancmoises/zupt/releases/tag/v5.2.10) with signed source/checksum records | Core evidence only; retain its explicit skips and formal assumptions |
 | Web 5.2.13 | Require results from the exact web commit and resulting image | No inherited CI, HTTPS, deployment, or rollback PASS |
 

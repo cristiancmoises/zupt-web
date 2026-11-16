@@ -134,6 +134,11 @@ and rejects RPATH/RUNPATH. See [AUDIT.md](AUDIT.md) for the full gate matrix
 and [UPSTREAM.md](UPSTREAM.md) for signed-source verification and all 294
 manifest entries. Upstream results do not validate this web service.
 
+After verification, the build wrapper restores execute permission only for the
+three Zupt test wrappers that invoke themselves through fixture symlinks. The
+image keeps public application and license files readable and owned by root;
+the service's private work directory remains mode 0700.
+
 CI runs on `main`, `5.2.13`, pull requests, and manual dispatch. The image job
 depends on the web and bundled-CLI jobs. Only after image inventory and live
 HTTP/crypto-mode tests pass does it export a Docker image artifact with
