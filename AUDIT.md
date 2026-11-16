@@ -77,6 +77,41 @@ reached only after successful image and live checks. Record the exact web
 commit and artifact digest when using a result. A successful older revision
 must not be relabeled as a new execution.
 
+## Recorded CI execution
+
+[Run 43811150369](https://github.com/cristiancmoises/zupt-web/actions/runs/43811150369)
+completed all three Ubuntu 24.04 jobs successfully on Web commit
+[`f5869245461cc919c28f5c118d800b988ca4c59b`](https://github.com/cristiancmoises/zupt-web/commit/f5869245461cc919c28f5c118d800b988ca4c59b).
+These results describe that committed code and its CI image, not a later
+documentation revision or a production deployment.
+
+| Job | Observed result | Scope |
+|---|---|---|
+| [web](https://github.com/cristiancmoises/zupt-web/actions/runs/43811150369/job/133112878538) | 34 tests passed, zero skips; syntax, shell and Compose checks completed | Flask routes, source-manifest regressions and separate Web/CLI version expectations |
+| [bundled-zupt](https://github.com/cristiancmoises/zupt-web/actions/runs/43811150369/job/133112878136) | Native build, `check`, `test-all`, in-tree SDK, license, ASAN/UBSAN smoke and installed-file gates completed | Source-only CLI profile; explicit dependency/platform skips retained |
+| [image](https://github.com/cristiancmoises/zupt-web/actions/runs/43811150369/job/133116595856) | The 0600-file/0700-directory source context built successfully; uid-1001 readability and live HTTP checks completed before export | Loopback Gunicorn/container execution with the hardened runtime controls above |
+
+The image log records **7 stages, 133 assertions and 4 credential-mode round
+trips**, using the four combinations in the matrix above. Each recovered the
+original bytes through compression, inspection, verification and extraction.
+This is HTTP evidence; public HTTPS, Secure-cookie proxy configuration,
+physical-device behavior, deployment and rollback require their own checks.
+
+Native logs retain explicit skips for unavailable SDK/PQBOX/Argon2 integrations,
+the OpenSSL 3.5+ ML-KEM comparison, platform and permission capabilities, loop
+devices, and optional shell/manual-page tools. `SMOKE-HARNESS-FAULT` diagnostics,
+including NUL-containing cases, are deliberate negative harness fixtures;
+they are separate from the successful real ASAN/UBSAN source-only smoke and
+must not be interpreted as either product sanitizer failures or whole-product
+sanitizer coverage.
+
+GitHub reports artifact **14201112296**, 130080371 bytes, with SHA-256
+`922d52d6f2f388bdfa0353f2a11aa71f95d4d38b58a2d604758f1c342e1b7fa9`.
+The job exported the Docker image archive, image metadata, `COMMIT` and
+`SHA256SUMS`. The downloaded ZIP matched that digest; its three internal
+checksums, source revision and image-version labels were also verified.
+These are copy-integrity checks, separate from a public release or deployment.
+
 ## Reproduce
 
 ```sh
@@ -100,7 +135,8 @@ docker compose config --quiet
 # Build the web image with an explicit source-revision label.
 VCS_REF=$(git rev-parse HEAD) docker compose build
 docker compose up -d
-python3 tests/live_smoke.py --base-url http://127.0.0.1:8181   --expected-version 5.2.10
+python3 tests/live_smoke.py --base-url http://127.0.0.1:8181 \
+  --expected-version 5.2.13 --expected-cli-version 5.2.10
 docker compose down
 ```
 
@@ -108,6 +144,15 @@ Release-only upstream targets such as `release-check` additionally require the
 upstream Git checkout, packaging tools, GUI dependencies, and formal toolchain.
 They are not replaced by the embedded-source matrix above. Formal proofs cover
 their modeled definitions and assumptions, not the whole Flask service.
+
+The upstream core execution on commit
+[`b4d6dcb5bd8a7f506d6248e675ebdc4df3323dd8`](https://github.com/cristiancmoises/zupt/commit/b4d6dcb5bd8a7f506d6248e675ebdc4df3323dd8)
+covered six selected Frama-C analyses and five Jasmin units within the
+[core audit scope](https://github.com/cristiancmoises/zupt/blob/0165fbd78faf78046d49e004622820ef79061f17/AUDIT.md).
+Conditional proof assumptions, caller preconditions, the aggregate CLI's
+`WITH_JASMIN=0` profile and the recorded upstream skips remain applicable.
+The Web CI above did not repeat that formal execution or prove the Flask
+service or final container binary as a whole.
 
 For an HTTPS deployment, enable `ZUPT_COOKIE_SECURE=1`, then run the live smoke
 against its actual public URL. Do not treat loopback, an exported image, or
@@ -123,7 +168,7 @@ upstream formal results as production HTTPS validation.
 | Web 5.2.11 / 5.2.12 source gates | Declared LF/CRLF verifier and historical-manifest regressions | Retained in 5.2.13; older results are not a new execution |
 | Web 5.2.13 CI [43806245612](https://github.com/cristiancmoises/zupt-web/actions/runs/43806245612) | Image build failed when a 0600 Frama-AES wrapper was executed through its fixture symlink | Web/core jobs passed; final-image readability was not reached |
 | ZUPT 5.2.10 core | [Official release](https://github.com/cristiancmoises/zupt/releases/tag/v5.2.10) with signed source/checksum records | Core evidence only; retain its explicit skips and formal assumptions |
-| Web 5.2.13 | Require results from the exact web commit and resulting image | No inherited CI, HTTPS, deployment, or rollback PASS |
+| Web 5.2.13 CI [43811150369](https://github.com/cristiancmoises/zupt-web/actions/runs/43811150369) at `f5869245461cc919c28f5c118d800b988ca4c59b` | All three jobs completed; 34 Web tests and the 7-stage/133-assertion HTTP matrix passed | CI image export only; separate HTTPS, device, deployment and rollback evidence required |
 
 External opaque SDK/PQBOX integrations are excluded. No test here establishes
 compatibility with their retired archives; follow [MIGRATION.md](MIGRATION.md).
