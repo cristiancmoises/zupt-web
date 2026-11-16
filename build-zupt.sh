@@ -9,6 +9,17 @@
 
 set -eu
 
+verify_only=0
+case "${1:-}" in
+    '') ;;
+    --verify-only) verify_only=1 ;;
+    *) echo "Usage: $0 [--verify-only]" >&2; exit 2 ;;
+esac
+if [ "$#" -gt 1 ]; then
+    echo "Usage: $0 [--verify-only]" >&2
+    exit 2
+fi
+
 SCRIPT_DIR=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd -P)
 cd "$SCRIPT_DIR"
 
@@ -28,7 +39,7 @@ if [ ! -f "$MANIFEST" ]; then
     exit 1
 fi
 
-# The manifest records the complete synchronized release-candidate source.
+# The manifest records the complete official ZUPT 5.2.10 source package.
 # Every source file must match its canonical signed Git blob. Only the two
 # explicitly declared Windows batch files may use Git's pure CRLF checkout
 # bytes; mixed endings and all other byte changes fail closed.
@@ -42,7 +53,14 @@ esac
 # A previous local build may have generated ignored artifacts. The Makefile is
 # already hash-verified above, so its narrowly scoped clean target is safe to
 # run before proving the remaining file set is exactly the release manifest.
-make clean
+if [ "$verify_only" -eq 0 ]; then
+    make clean
+fi
+
+if [ -n "$(find . ! -type f ! -type d -print)" ]; then
+    echo "Error: bundled ZUPT tree contains a symlink or special file" >&2
+    exit 1
+fi
 
 expected_files=$(mktemp "${TMPDIR:-/tmp}/zupt-expected.XXXXXXXX")
 actual_files=$(mktemp "${TMPDIR:-/tmp}/zupt-actual.XXXXXXXX")
@@ -55,6 +73,11 @@ if ! diff -u "$expected_files" "$actual_files"; then
 fi
 
 bash scripts/check-source-only.sh --tree .
+
+if [ "$verify_only" -eq 1 ]; then
+    echo "Verified ZUPT 5.2.10 source; no build requested."
+    exit 0
+fi
 
 jobs=${ZUPT_BUILD_JOBS:-2}
 case "$jobs" in

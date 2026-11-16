@@ -1,190 +1,120 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
+# ZUPT
 
-# ZUPT 5.2.10
+[English](README.md) | [Português do Brasil](README.pt-BR.md)
 
-[English](README.md) | Português do Brasil
+O ZUPT é um arquivador de backups em C11 com compressão VaptVupt e
+criptografia autenticada opcional. Reúne arquivos e diretórios em contêineres
+`.zupt`, oferece processamento com múltiplas threads e conta com uma interface
+de desktop em Python/Qt.
 
-Este README descreve o código-fonte 5.2.10. Os downloads publicados e seu estado
-de validação estão na [página de releases](https://github.com/cristiancmoises/zupt/releases/latest);
-a versão do código ou uma tag Git, isoladamente, não significa que os pacotes
-já foram publicados.
+[Downloads](https://github.com/cristiancmoises/zupt/releases/latest) ·
+[Instalação](INSTALL.md) · [Guia de usuário](docs/GUIA_USUARIO.pt-BR.md) ·
+[Site](https://zupt.securityops.co)
 
-ZUPT é um arquivador de backup em C11. Ele combina o codec VaptVupt incluído
-como código-fonte com criptografia autenticada AES-256-CTR + HMAC-SHA256,
-criptografia híbrida ML-KEM-768/X25519, verificação de integridade, execução
-multithread e uma interface gráfica opcional em Python/Qt.
+## Instalação
 
-Disponível para openSUSE: [download e atualização](#pacotes-opensuse).
+Baixe os bundles da CLI, da interface gráfica e os pacotes nativos na
+[página de releases](https://github.com/cristiancmoises/zupt/releases/latest).
+Consulte [INSTALL.md](INSTALL.md) para requisitos de cada plataforma,
+verificação das somas de integridade e instruções de instalação.
 
-## O que muda na versão 5.2.10
-
-- Atualiza o codec incluído de 2.65.11 para 2.65.13.
-- Prepara somente buckets alcançáveis para entradas pequenas em
-  BALANCED/EXTREME e no pré-passe do primeiro bloco, dimensiona o histórico
-  hash3 pela cadeia real e inicializa explicitamente a raiz da árvore Huffman.
-- Preserva a política do adaptador do ZUPT e sua verificação por
-  descompactação e comparação antes de aceitar um bloco comprimido.
-- Desativa o eco antes de mostrar o prompt POSIX de senha e usa uma espera
-  atômica por sinais. Leituras não bloqueantes evitam travamento quando o
-  terminal descarta a entrada; ao sair, restaura a configuração do terminal
-  e os flags originais do descritor. Os testes cobrem os quatro sinais,
-  confirmação, entrada descartada e limites de tamanho de senha.
-- Não altera o formato de arquivo 1.6, o identificador de codec `0x0010`, a
-  interface de linha de comando nem a ABI pública do SDK.
-
-O suporte a contexto FAST sem alocação faz parte da biblioteca VaptVupt, mas o
-ZUPT continua usando quadros independentes pela API tradicional. O programa não
-depende de módulo do kernel.
-
-O prompt Windows e a gramática dos arquivos permanecem inalterados.
-
-## Pacotes openSUSE
-
-O ZUPT está disponível para openSUSE pelo projeto comunitário OBS
-[`home:cabelo:innovators`](https://build.opensuse.org/project/show/home:cabelo:innovators).
-Use a [página do pacote openSUSE](https://software.opensuse.org/package/zupt)
-para selecionar sua distribuição ou consulte os repositórios de download
-verificados para
-[Leap 16.0](https://download.opensuse.org/repositories/home:/cabelo:/innovators/16.0/)
-e [Tumbleweed](https://download.opensuse.org/repositories/home:/cabelo:/innovators/openSUSE_Tumbleweed/).
-Escolha a versão do sistema e a arquitetura corretas; confira o repositório e
-sua chave de assinatura antes de habilitá-lo. São pacotes comunitários, não uma
-alegação de aceitação no Factory ou inclusão nos repositórios padrão.
-
-Na verificação de 2026-09-30, ambos os repositórios x86_64 oferecem ZUPT
-**5.2.9**. Essa versão downstream é diferente da **5.2.10** deste repositório;
-não presuma que inclui a atualização de codec desta versão.
-
-Depois de habilitar o repositório correspondente em um sistema openSUSE não
-transacional:
-
-```sh
-sudo zypper refresh
-sudo zypper install zupt
-```
-
-Para atualizar um pacote já instalado pelos repositórios configurados:
-
-```sh
-sudo zypper refresh
-sudo zypper update zupt
-zupt --version
-```
-
-Revise a transação proposta; não desative verificações de assinatura nem force
-a troca de fornecedor. Esses comandos não fazem uma atualização de distribuição
-do Tumbleweed. Consulte o
-[guia do Zypper](https://doc.opensuse.org/documentation/tumbleweed/zypper/)
-para gerenciar repositórios e atualizações do sistema.
+- **openSUSE Tumbleweed:** os pacotes comunitários são mantidos no
+  [OBS `home:cabelo:innovators`](https://build.opensuse.org/project/show/home:cabelo:innovators);
+  consulte a [página do pacote](https://software.opensuse.org/package/zupt).
+- **GNU Guix:** o
+  [canal personalizado Security Ops](https://git.securityops.com.br/cristiancmoises/securityops-channel)
+  contém definições de pacotes e instruções de configuração do canal.
+- **Outras plataformas:** use os downloads ou compile a partir da fonte abaixo.
 
 Agradecemos a Alessandro de Oliveira Faria
 ([Cabelo](https://build.opensuse.org/users/cabelo)) pela ajuda na manutenção do
-pacote comunitário openSUSE. Essa colaboração downstream não implica autoria do
-código-fonte upstream.
+pacote comunitário para openSUSE.
 
-## Compilação rápida
+## Linha de comando
 
-Requisitos do perfil padrão: compilador C11, GNU Make, biblioteca C, `libm` e
-threads do sistema. O processo de compilação não baixa dependências.
+Crie um arquivo, liste seu conteúdo, teste a integridade e restaure os dados:
 
 ```sh
-make clean
-make -j2 WITH_SDK=0 WITH_PQBOX=0 V=1
-make WITH_SDK=0 WITH_PQBOX=0 check
-```
-
-Para executar também os testes estendidos:
-
-```sh
-make WITH_SDK=0 WITH_PQBOX=0 test-all
-```
-
-## Uso básico
-
-```sh
-# Criar um arquivo
 zupt compress backup.zupt documentos/
-
-# Listar e testar sem extrair
 zupt list backup.zupt
 zupt test backup.zupt
-
-# Extrair para um diretório novo
+mkdir -p restaurado
 zupt extract -o restaurado backup.zupt
 ```
 
-Consulte `zupt --help` e a página de manual `zupt(1)` para todas as opções.
-Para senhas, prefira o prompt interativo, `--pass-file` com arquivo de modo
-privado ou `--pass-fd`. Colocar a senha diretamente nos argumentos pode expô-la
-na lista de processos e no histórico do shell.
+Para criptografar um backup, informe a senha de forma interativa:
 
-## Integridade, compatibilidade e segurança
+```sh
+zupt compress --password-prompt criptografado.zupt documentos/
+mkdir -p restaurado-criptografado
+zupt extract --password-prompt -o restaurado-criptografado criptografado.zupt
+```
 
-- Nos modos criptografados, HMAC-SHA256 autentica metadados e blocos. Arquivos
-  sem criptografia usam apenas verificações XXH64 não criptográficas.
-- A leitura exige o trailer de integridade por padrão.
-- O ZUPT rejeita componentes de caminho perigosos e evita seguir links durante
-  a publicação e a extração.
-- `--allow-legacy-no-ait` deve ser usado somente para um arquivo antigo,
-  conhecido e confiável. Ele reduz a garantia de integridade.
-- XXH64 detecta corrupção acidental; não substitui autenticação criptográfica.
-- Cópias de segurança continuam exigindo testes periódicos de restauração e
-  uma estratégia externa de redundância.
+Arquivos sem criptografia detectam corrupção acidental, mas não oferecem
+confidencialidade nem autenticação criptográfica. Preserve os dados originais
+até conferir uma cópia restaurada. Consulte `zupt --help`, `man zupt` e o
+[guia de usuário](docs/GUIA_USUARIO.pt-BR.md) para arquivos de senha, criptografia
+pós-quântica e outras opções.
 
-O modelo de ameaças completo permanece em [THREAT_MODEL.md](THREAT_MODEL.md) e
-a política de segurança em [SECURITY.md](SECURITY.md). A orientação operacional
-em português está em [DOCUMENTACAO.pt-BR.md](DOCUMENTACAO.pt-BR.md).
+## Interface de desktop
 
-## Pacotes e artefatos de release
+Execute `zupt-gui` após instalar o pacote da interface gráfica. A GUI usa a
+CLI local e precisa de Python 3 com PySide6 ou PyQt6. Em uma cópia do código-fonte
+com essas dependências instaladas:
 
-Publique somente arquivos compilados e validados a partir da tag exata.
-Novos arquivos de fonte e Linux usam `.zupt` sem criptografia, com
-`zupt test`, extração e comparação integral antes da publicação.
+```sh
+ZUPT_BIN="$PWD/zupt" python3 gui/src/zupt_gui.py
+```
 
-| Arquivo | Validação exigida antes da publicação |
+Consulte o [guia da GUI](gui/README.md) para configuração e uso no desktop.
+
+## Interface web
+
+Acesse o [ZUPT Web](https://zupt-web.securityops.co) para experimentar a
+interface no navegador. Os arquivos enviados são processados no servidor.
+Use exemplos sem dados sensíveis; para dados confidenciais, use a CLI ou
+a interface de desktop local.
+
+## Compilação a partir da fonte
+
+A CLI precisa de compilador C11 e GNU Make. Os testes também usam Bash e Python 3.
+
+```sh
+git clone https://github.com/cristiancmoises/zupt.git
+cd zupt
+git switch 5.2.10
+make -j2 WITH_SDK=0 WITH_PQBOX=0 WITH_JASMIN=0
+make WITH_SDK=0 WITH_PQBOX=0 WITH_JASMIN=0 check
+```
+
+Consulte o [guia de compilação](docs/GUIA_USUARIO.pt-BR.md#compilação-a-partir-do-código-fonte)
+para requisitos de plataforma, instalação e integrações opcionais.
+
+## Documentação
+
+- [Guia de usuário em português](docs/GUIA_USUARIO.pt-BR.md) e [English user guide](docs/USER_GUIDE.md).
+- [Guia da GUI](gui/README.md) e [referência em português](DOCUMENTACAO.pt-BR.md).
+- [Política de segurança](SECURITY.md), [modelo de ameaças](THREAT_MODEL.md) e [guia de auditoria](AUDIT.md).
+- [Guia de distribuição](DISTRIBUTION.md) e [changelog](CHANGELOG.md).
+
+| Versão do ZUPT | Codec VaptVupt integrado |
 | --- | --- |
-| `zupt-5.2.10-src.zupt` | Árvore de fonte sem credenciais ou prompts; extração igual à tag. |
-| `zupt-5.2.10-linux-x86_64.zupt` | CLI Linux x86_64 e avisos completos; teste funcional da extração. |
-| `zupt_5.2.10_amd64.deb` | Compilação DEB real, dependências e conteúdo; teste da CLI extraída ou instalada. |
-| `zupt-5.2.10-0.x86_64.rpm` e `zupt-5.2.10-0.src.rpm` | Compilação RPM/SRPM real, procedência, conteúdo e teste funcional. |
-| `SHA256SUMS`, `SHA256SUMS.asc`, `release-key.asc` | Hashes exatos, assinatura destacada verificada e chave pública. |
+| 5.2.9 | 2.65.11 |
+| 5.2.10 | 2.65.13 |
 
-Um pacote sem sua compilação ou seu teste exigido não é publicado. Testes
-locais do pacote extraído não equivalem a instalação em Ubuntu/openSUSE.
-Windows, macOS, instaladores GUI e outras arquiteturas precisam de builds
-nativos novos e não são prometidos nesta versão. Releases anteriores
-preservam seus formatos e arquivos.
+Fontes: [GitHub](https://github.com/cristiancmoises/zupt),
+[Security Ops](https://git.securityops.co/cristiancmoises/zupt),
+[Security Ops Brasil](https://git.securityops.com.br/cristiancmoises/zupt) e
+[Codeberg](https://codeberg.org/berkeley/zupt).
 
-O fluxo antigo de promoção de 13 arquivos fica desativado para v5.2.10 ou
-posterior. Tarballs RPM/OBS e arquivos CI são entradas internas de construção;
-não são os novos downloads públicos. Nunca descreva um pacote sem assinatura
-como assinado.
+## Licença e contato
 
-## Código-fonte e procedência do codec
+Copyright © 2025–2026 Cristian Cezar Moisés. O aplicativo e a GUI usam
+[AGPL-3.0-or-later](LICENSE-AGPL-3.0); os arquivos identificados do codec usam
+[GPL-3.0-or-later](LICENSE-GPL-3.0). As licenças e os avisos dos componentes estão
+em [LICENSE](LICENSE), [NOTICE](NOTICE) e [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).
 
-A tag imutável `v5.2.10` mantém as receitas históricas AUR, Homebrew e Guix
-da versão 5.2.9. Uma atualização de empacotamento separada fixa essas receitas
-no arquivo de fonte verificado, gerado pelo forge para a tag exata 5.2.10,
-sem alterar a tag ou publicar um novo tarball. A verificação dos pins não
-representa teste nativo de instalação AUR, Homebrew ou Guix.
-
-O codec incluído integra o VaptVupt 2.65.13 no commit
-`e30dc9329be7cf9f233b1ac0b1fc9ed31f530391`, com adaptações do ZUPT preservadas.
-Não é uma cópia byte a byte da árvore canônica: mantém os limites do parser,
-o fallback de limpeza segura Darwin/NetBSD e a política do adaptador.
-Os arquivos do aplicativo usam AGPL-3.0-or-later; os arquivos do codec usam
-GPL-3.0-or-later. As rotinas derivadas de xxHash também preservam BSD-2-Clause.
-Veja [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md) e os arquivos `LICENSE*`.
-
-Repositório canônico: <https://github.com/cristiancmoises/zupt>.
-
-Espelhos:
-
-- <https://codeberg.org/berkeley/zupt>
-- <https://git.securityops.co/cristiancmoises/zupt>
-- <https://git.securityops.com.br/cristiancmoises/zupt>
-
-## Relato de vulnerabilidade
-
-Não publique detalhes exploráveis antes da coordenação. Siga o contato e o
-processo descritos em [SECURITY.md](SECURITY.md).
+**Contato oficial: [sac@securityops.co](mailto:sac@securityops.co).**
+Este é o único e-mail oficial do projeto. `zupt@riseup.net` não tem relação
+com o ZUPT. Relate vulnerabilidades conforme [SECURITY.md](SECURITY.md).

@@ -2,19 +2,21 @@
 
 import unittest
 
-import app
 import live_smoke
+
+import app
 
 
 class VersionBoundaryTests(unittest.TestCase):
     def test_web_release_is_distinct_from_bundled_cli(self):
-        self.assertEqual(app.APP_VERSION, '5.2.12')
+        self.assertEqual(app.APP_VERSION, "5.2.13")
         args = live_smoke.parse_args([])
-        self.assertEqual(args.expected_version, '5.2.12')
-        self.assertEqual(args.expected_cli_version, '5.2.10')
+        self.assertEqual(args.expected_version, "5.2.13")
+        self.assertEqual(args.expected_cli_version, "5.2.10")
 
     def test_smoke_accepts_separate_explicit_version_expectations(self):
-        args = live_smoke.parse_args([
-            '--expected-version', '5.2.12', '--expected-cli-version', '5.2.10'])
-        self.assertEqual(args.expected_version, '5.2.12')
-        self.assertEqual(args.expected_cli_version, '5.2.10')
+        args = live_smoke.parse_args(
+            ["--expected-version", "5.2.13", "--expected-cli-version", "5.2.10"]
+        )
+        self.assertEqual(args.expected_version, "5.2.13")
+        self.assertEqual(args.expected_cli_version, "5.2.10")

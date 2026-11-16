@@ -1,32 +1,16 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 
-# ZUPT Web 5.2.12
+# ZUPT Web 5.2.13
 
 [English](README.md) | [Português do Brasil](README.pt-BR.md)
 
-O ZUPT Web é uma interface web auto-hospedada para o arquivador ZUPT. Ele
-compacta, criptografa, verifica, inspeciona e extrai arquivos `.zupt` sem conta
-externa nem armazenamento em nuvem.
+O ZUPT Web é uma interface auto-hospedada para o arquivador ZUPT. Compacta,
+criptografa, verifica, inspeciona e extrai arquivos `.zupt` sem contas ou
+armazenamento em nuvem. Compila o código-fonte oficial do **ZUPT 5.2.10** com
+**VaptVupt 2.65.13**; o formato desktop permanece **v1.6**.
+A versão Web 5.2.13 é independente da versão 5.2.10 do CLI incluído.
 
-O Web 5.2.12 inclui a fonte desktop corrigida e fixada em [UPSTREAM.md](UPSTREAM.md).
-As tags imutáveis Web 5.2.10 e 5.2.11 permanecem históricas e inalteradas;
-o Web 5.2.10 mantém sua falha conhecida de manifesto nos finais de linha do
-checkout. O limite exato entre checkout Git e exportação de código-fonte
-introduzido no Web 5.2.11 é preservado.
-Somente os dois arquivos batch Windows declarados aceitam LF exato ou CRLF
-puro determinístico; finais mistos e adulteração falham. Os demais bytes e a
-lista completa de arquivos permanecem exatos. O CLI incluído é ZUPT 5.2.10 com o codec
-VaptVupt 2.65.13. A atualização prepara somente os buckets alcançáveis do matcher
-para entradas de até 4 KiB e sua pré-passagem inicial nos modos com entropia da
-implementação desktop incluída. Testes de igualdade exata da saída e roundtrip
-verificam a compatibilidade. A fonte desktop corrigida desativa o eco do terminal
-POSIX antes de exibir a solicitação de senha e restaura o estado do terminal
-após interrupções por sinal. As senhas web continuam usando o descritor herdado,
-sem passar pela linha de comando. O formato desktop ZUPT v1.6, as rotas web e os modos criptográficos
-não mudaram em relação ao ZUPT Web 5.2.9. O Android usa o formato independente
-`zupt-android/v1.3`, com STORE e DEFLATE bruto; os arquivos não são intercambiáveis.
-
-## Execução local
+## Execução
 
 Requisitos: Docker Engine e Docker Compose.
 
@@ -34,115 +18,138 @@ Requisitos: Docker Engine e Docker Compose.
 git clone https://git.securityops.co/cristiancmoises/zupt-web.git
 cd zupt-web
 ./setup.sh
+# http://localhost:8181
 ```
 
-Por padrão, o serviço escuta somente em `127.0.0.1:8181`. Para usar outra
-porta local:
+Um pacote-fonte Web `.zupt` extrai arquivos com modo 0600. Verifique primeiro
+a assinatura GPG do `SHA256SUMS` daquela release Web e o checksum do pacote;
+o [UPSTREAM.md](UPSTREAM.md) registra a impressão digital da chave e a
+proveniência do núcleo. Na raiz do projeto extraído, restaure somente estes
+pontos de entrada antes de executar o setup ou a verificação do fonte:
 
 ```sh
-PORT_HOST=8282 ./setup.sh
+chmod u+x setup.sh build-zupt.sh \
+  zupt-5.2.10/scripts/check-source-only.sh
 ```
 
-Quando o TLS termina em um proxy reverso, defina `ZUPT_COOKIE_SECURE=1` para
-exigir o atributo `Secure` no cookie CSRF. O backend não confia automaticamente
-em cabeçalhos encaminhados para deduzir o esquema visto pelo navegador.
-
-Confirme a versão e a prontidão:
+O `setup.sh` valida o Compose, compila e testa o CLI incluído, inicia o
+contêiner e confere a versão. Use `PORT_HOST=8282 ./setup.sh` para mudar a
+porta local. Para gerenciar diretamente:
 
 ```sh
-curl -fsS http://127.0.0.1:8181/healthz
-curl -fsS http://127.0.0.1:8181/version
-docker exec zupt-web zupt version
+docker compose build
+docker compose up -d
+docker compose ps
+docker compose logs -f
+docker compose down
 ```
 
-O endpoint de saúde deve informar `5.2.12`. O endpoint `/version` responde com
-HTTP 503 quando o binário do ZUPT não está pronto; ele não mascara essa falha
-como sucesso.
+O endereço padrão é `127.0.0.1:8181`. O acesso remoto exige um proxy reverso
+HTTPS e controle de acesso adequado ao público: o serviço recebe senhas e
+chaves privadas. Quando o TLS termina no proxy, defina `ZUPT_COOKIE_SECURE=1`.
+Use `BIND_HOST=0.0.0.0` apenas com a proteção de rede já configurada.
 
 ## Recursos
 
 | Recurso | Implementação |
 |---|---|
-| Criptografia híbrida | ML-KEM-768 + X25519 por `--pq` |
-| Criptografia somente pós-quântica | ML-KEM-768 por `--pq-only` |
-| Criptografia por senha | AES-256-CTR + HMAC-SHA256 e PBKDF2-SHA256 |
-| Compactação | AUTO, VaptVupt 2.65.13, LZHP ou Store |
-| Validação | trailer autenticado, validação por bloco e extração contida |
-| Implantação | contêiner em três estágios, sem root e com raiz somente leitura |
+| Criptografia híbrida | ML-KEM-768 + X25519, `--pq` |
+| Criptografia somente pós-quântica | ML-KEM-768, `--pq-only` |
+| Criptografia por senha | AES-256-CTR + HMAC-SHA256; PBKDF2-SHA256 |
+| Compactação | AUTO, VaptVupt 2.65.13, LZHP, Store; níveis 1–9 |
+| Opções de backup | Modo sólido ou desduplicação por blocos, mutuamente exclusivos |
+| Inspeção | Formato/trailer, UUID, flags, metadados criptográficos, tamanhos e blocos |
+| Implantação | Imagem Docker em três estágios, sem root e com raiz somente leitura |
 
-O modo sólido e a desduplicação por blocos são mutuamente exclusivos na
-interface. O gravador sólido do ZUPT não executa desduplicação real.
+O Android usa o formato independente `zupt-android/v1.3`, com STORE/DEFLATE
+bruto. Os arquivos desktop e Android não são intercambiáveis.
 
 ## Configuração
 
+As variáveis `ZUPT_*` têm precedência sobre os nomes de compatibilidade
+`VAPTVUPT_*` usados pelas versões 3.0.0–5.2.1.
+
 | Variável | Padrão | Finalidade |
 |---|---:|---|
-| `ZUPT_MAX_UPLOAD_MB` | `512` | limite da requisição em MiB |
-| `ZUPT_KEY_TTL_SEC` | `14400` | retenção de tarefas e chaves |
-| `ZUPT_COMPRESS_TIMEOUT` | `600` | tempo máximo de compactação |
-| `ZUPT_EXTRACT_TIMEOUT` | `600` | tempo máximo de extração/verificação |
-| `ZUPT_COOKIE_SECURE` | `0` | use `1` quando o acesso do navegador for exclusivamente por HTTPS |
-| `ZUPT_SECRET_KEY` | gerada no início | segredo de sessão do Flask |
+| `ZUPT_MAX_UPLOAD_MB` | `512` | Limite da requisição em MiB |
+| `ZUPT_KEY_TTL_SEC` | `14400` | Retenção de tarefas e chaves em segundos |
+| `ZUPT_SECRET_KEY` | gerada no início | Segredo do Flask |
+| `ZUPT_COMPRESS_TIMEOUT` | `600` | Tempo de compactação, 1–600 segundos |
+| `ZUPT_EXTRACT_TIMEOUT` | `600` | Tempo de extração/verificação, 1–600 segundos |
+| `ZUPT_COOKIE_SECURE` | `0` | Use `1` quando o navegador acessar exclusivamente por HTTPS |
 
-Os nomes antigos `VAPTVUPT_*` ainda são aceitos como fallback de
-compatibilidade. Novas implantações devem usar `ZUPT_*`.
+O contêiner usa `ZUPT_BIN=/usr/local/bin/zupt` e
+`ZUPT_WORKDIR=/tmp/zupt-work`, um tmpfs de 2 GiB com modo 0700. Executa como
+UID 1001, remove todas as capabilities, ativa `no-new-privileges` e limita
+memória a 4 GiB e processos a 256. A aplicação permite até 600 segundos por
+operação; o Gunicorn espera 660 segundos. Outros launchers podem definir
+`ZUPT_BIN` e `ZUPT_WORKDIR` diretamente.
 
-## Limite de segurança
+As senhas chegam ao CLI pela entrada padrão herdada (`--pass-fd 0`), não
+pelos argumentos do processo. Os formulários usam CSRF; cada operação tem
+diretório isolado e downloads de chaves expiram. Essas medidas reduzem riscos;
+uploads continuam sendo entrada não confiável. Salve as chaves necessárias
+antes de parar o contêiner: o conteúdo do tmpfs desaparece com ele.
 
-- Publique a interface remota apenas atrás de HTTPS. Ela recebe senhas e
-  chaves privadas.
-- O contêiner executa como UID 1001, remove todas as capabilities, ativa
-  `no-new-privileges`, limita processos e memória e usa sistema de arquivos
-  raiz somente leitura.
-- Senhas chegam ao ZUPT por descritor herdado (`--pass-fd 0`), não pela lista
-  de argumentos do processo.
-- Cada formulário usa token CSRF; caminhos de upload e download são validados
-  e isolados por tarefa.
-- Implantações HTTPS devem definir `ZUPT_COOKIE_SECURE=1`; o teste ao vivo por
-  HTTPS rejeita um cookie CSRF sem o atributo `Secure`.
-- Arquivos enviados continuam sendo entrada não confiável. Isolamento e
-  limites reduzem risco, mas não equivalem a uma prova de ausência de falhas.
-
-## Migração do 5.2.1
-
-O perfil atual não inclui o binário opaco `libvuptsdk` usado pela imagem web
-5.2.1. Arquivos Argon2id ou `--pq-sdk` daquela versão precisam ser restaurados
-com o leitor 5.2.1 em ambiente local e confiável, verificados e depois
-recriados com um modo nativo atual. Não remova a única cópia nem o ambiente
-de recuperação antes de testar a restauração. Consulte
-[MIGRATION.md](MIGRATION.md).
-
-## Proveniência e testes
-
-O diretório `zupt-5.2.10/` contém a árvore-fonte completa sincronizada do
-release corrigido. Consulte [UPSTREAM.md](UPSTREAM.md) para a proveniência.
-`build-zupt.sh` verifica todos os arquivos do manifesto antes de compilar. Para
-validar a aplicação localmente:
+## Verificação
 
 ```sh
+curl -fsS http://127.0.0.1:8181/healthz
+# {"ok":true,"service":"zupt-web","version":"5.2.13"}
+curl -fsS http://127.0.0.1:8181/version
+docker exec zupt-web zupt version
+```
+
+O `/healthz` informa que o processo está ativo. O `/version` verifica a
+prontidão do CLI e retorna 503 quando o binário está indisponível.
+`/usr/local/bin/vaptvupt` permanece como alias para scripts antigos.
+
+## Compatibilidade na atualização
+
+Este perfil compilado do fonte exclui o `libvuptsdk` opaco usado pelo ZUPT Web
+5.2.1. Os modos nativos por senha, `--pq` e `--pq-only` continuam disponíveis.
+Arquivos Argon2id ou `--pq-sdk` do 5.2.1 precisam do leitor daquela versão.
+Preserve o ambiente de recuperação e os originais até restaurar, conferir e
+criptografar novamente os arquivos. Consulte [MIGRATION.md](MIGRATION.md).
+
+## Desenvolvimento e CI
+
+```sh
+./build-zupt.sh --verify-only
 python3 -m venv .venv
 .venv/bin/pip install --require-hashes -r requirements.txt
 .venv/bin/python -m unittest discover -s tests -v
+shellcheck setup.sh build-zupt.sh
 docker compose config --quiet
-docker build --tag zupt-web:5.2.12 .
 ```
 
-Os dois testes de integração checkout/exportação de tag exigem Git e o histórico
-imutável `v5.2.10` e `v5.2.11` desta árvore. Cada snapshot histórico usa seu
-próprio manifesto: a exportação inválida conhecida da v5.2.10 é rejeitada,
-e a exportação corrigida da v5.2.11 passa. Pacotes de código-fonte sem metadados Git
-informam exatamente esses dois testes como ignorados explicitamente; os demais
-26 continuam sendo executados. Com esse histórico Git, os 28 são executados.
+O verificador aceita LF exato ou sua transformação CRLF pura e determinística
+somente nos dois caminhos batch Windows declarados pelo upstream. Outras
+transformações, finais mistos, travessia, duplicatas e symlinks falham. Os testes
+históricos usam o manifesto de cada tag; um pacote sem histórico Git não
+executa os dois testes de integração Git.
 
-Os resultados executados para esta revisão ficam consolidados em
-[AUDIT.md](AUDIT.md); um teste não executado ou bloqueado não é tratado como
-aprovação.
+O `./build-zupt.sh` verifica e compila o CLI, executa `make check`, remove
+símbolos e rejeita RPATH/RUNPATH. A matriz completa está em [AUDIT.md](AUDIT.md);
+a verificação de assinatura do fonte e o manifesto dos 294 arquivos estão em
+[UPSTREAM.md](UPSTREAM.md). Resultados do núcleo não validam o serviço web.
 
-## Licenças
+A CI atende `main`, `5.2.13`, pull requests e execução manual. A imagem depende
+dos jobs Web e CLI. Somente após o inventário da imagem e os testes HTTP dos
+modos criptográficos passarem, exporta um artefato Docker com `SHA256SUMS`,
+`COMMIT` Web e metadados. O artefato não é uma implantação em produção. O
+Compose aceita `VCS_REF` para o rótulo de revisão; a CI usa o commit testado.
 
-O ZUPT Web usa AGPL-3.0-or-later. O código-fonte incluído possui escopos
+## Projeto e licenças
+
+- [ZUPT CLI/GUI](https://github.com/cristiancmoises/zupt)
+- [Espelho GitHub](https://github.com/cristiancmoises/zupt-web)
+- [Espelho Codeberg](https://codeberg.org/berkeley/zupt-web)
+- [Codec VaptVupt](https://git.securityops.co/cristiancmoises/vaptvupt-codec)
+
+O ZUPT Web usa [AGPL-3.0-or-later](LICENSE). O fonte incluído tem escopos
 AGPL-3.0-or-later, GPL-3.0-or-later, BSD-2-Clause, BSD-3-Clause e CC0-1.0
 identificados separadamente. Preserve `LICENSE*`, `NOTICE` e
-`THIRD-PARTY-NOTICES.md` ao redistribuir.
-
-Contato para licenciamento comercial: `sac@securityops.co`.
+[THIRD-PARTY-NOTICES.md](zupt-5.2.10/THIRD-PARTY-NOTICES.md). Operadores de um
+serviço de rede modificado devem cumprir as exigências da AGPL sobre acesso
+ao código-fonte. Contato para licenciamento comercial: `sac@securityops.co`.

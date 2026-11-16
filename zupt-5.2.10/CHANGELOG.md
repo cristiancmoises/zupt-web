@@ -1,38 +1,48 @@
 # ZUPT Changelog
 
-## [5.2.10] — 2026-10-01 — Codec compatibility and terminal prompt fixes
+## [5.2.10] — Compression, security and desktop reliability
 
-The original unpublished 5.2.10 tag preceded the terminal corrections below.
-The maintainer authorized correcting that tag before the first package release;
-the previous tag object and commits are retained as development evidence.
-Validate the signed release commit rather than reusing old candidate packages.
+### Compression and compatibility
 
-- Disable POSIX terminal echo before printing the password prompt. Use an
-  atomic signal wait and nonblocking reads so input-entry interruption and
-  terminal input flushing cannot strand the prompt. Restore terminal state,
-  descriptor flags, handlers and the signal mask before propagating a signal.
-- Add deterministic ordering and interruption regressions, real terminal flush
-  cases, confirmation round trips, and empty/maximum/oversized password checks.
+- Update the bundled VaptVupt codec to 2.65.13 while retaining archive format
+  1.6 and the existing command-line interface.
+- Correct Huffman estimates for small alphabets and strengthen ANS length,
+  output-capacity and allocation-failure handling.
+- Add an experimental, dependency-free Rust varint module with compatibility
+  tests. The command-line application remains written in C11.
 
-- Integrate the VaptVupt 2.65.13 encoder changes from
-  `e30dc9329be7cf9f233b1ac0b1fc9ed31f530391`: reachable-bucket preparation for small
-  BALANCED/EXTREME inputs and their first-block prepass, correctly sized
-  hash3 history, bounded NULL/zero-length setup, and explicit Huffman
-  tree-root initialization.
-- Retain Zupt's parser bounds, Darwin/NetBSD secure-wipe fallback, codec
-  licensing and third-party notices, wrapper defaults, and read-back check.
-  The imported files are consumer adaptations rather than byte-identical
-  canonical codec copies.
-- Preserve archive format 1.6, codec identifier `0x0010`, and the public ABI.
-- Publish new source and Linux archives as verified, unencrypted `.zupt`
-  files with SHA-256 checksums. Internal RPM/OBS source tarballs are build
-  inputs; old release artifacts remain historical.
-- Require fresh tests for the exact candidate. Unbuilt platform packages
-  are not release assets and prior CI results do not approve this version.
-- Mark AUR, Homebrew and Guix recipes as verified legacy 5.2.9 inputs;
-  update their source pins separately after the immutable 5.2.10 tag.
+### Reliability and security
+
+- Clean up partially initialized compression workers and retain the sequential
+  fallback when a worker cannot be started.
+- Restore terminal settings when password entry is interrupted and improve
+  password-file and inherited-descriptor handling.
+- Fix graphical-interface worker cleanup, close subprocess output pipes and
+  enforce execution timeouts and cancellation.
+- Stop installation when a required directory, copy or man-page step fails.
+- Correct native build and test-fixture portability on Windows and macOS,
+  including spaced paths and compiler hardening flags.
+
+### Packages and documentation
+
+- Provide new source and portable bundles as level-9 `.zupt` archives. DEB,
+  RPM and source RPM packages retain their native formats.
+- Include English and Brazilian Portuguese usage guides, security information
+  and license notices in the CLI, GUI and platform packages.
+- Expand installation, backup, restore and verification documentation.
+
+### Tests
+
+- Extend coverage for malformed archives, exact-sized buffers, allocation and
+  worker failures, key-file handling, GUI lifecycle and package contents.
+- Add reproducible Frama-C and Jasmin checks alongside GCC, Clang, sanitizer
+  and native-package tests. Analysis assumptions and coverage are documented
+  in [AUDIT.md](AUDIT.md).
 
 ## [5.2.9] — 2026-09-06 — VaptVupt 2.65.11 compatibility refresh
+
+Official release: [downloads and checksums](https://github.com/cristiancmoises/zupt/releases/tag/v5.2.9).
+Português do Brasil: [status da versão e guia de uso](docs/GUIA_USUARIO.pt-BR.md#status-da-versão).
 
 - Update the bundled VaptVupt codec from 2.65.3 to tag `v2.65.11` at
   `1cc78bce90619dbf97e0ed1ad449c3c4f6329041` while preserving Zupt's
@@ -873,9 +883,9 @@ remains readable (proof matrix below).
 - **Ratio gate verified on identical inputs**: archives produced by the
   shipped 3.8.0 binary and by 4.0.0 are byte-identical in size for
   text/source/redundant (Δ 0.00 %); see BENCHMARKS.md §1.
-- Brings the canonical, **CBMC-formally-verified BCJ filters**
-  (upstream v2.56.0) with automatic ELF/PE/Mach-O detection (v2.55.0),
-  enabled for levels ≥ 3.
+- Brings the upstream v2.56.0 BCJ filters with automatic ELF/PE/Mach-O
+  detection (v2.55.0), enabled for levels ≥ 3, and covers them with functional
+  regressions. This repository retains no reproducible CBMC proof artifact.
 - Codec release string is now single-sourced (`ZUPT_CODEC_RELEASE`).
 
 ### F-16 — data-loss defect in ≤ 3.8.0 BCJ encoding (pre-existing, fixed)
@@ -1019,8 +1029,8 @@ and method stated for every table:
   edges out VaptVupt-L9 on text/binary).
 - A clear statement that the codec is **not** the reason to use VaptVupt
   — the value is the combination of PQ-hybrid encryption, Argon2id,
-  per-block authenticated encryption, and formally-verified
-  constant-time crypto.
+  per-block authenticated encryption, and constant-time-intended helpers with
+  timing regressions and documented compiler/platform limits.
 
 ### Honesty notes baked into the document
 
@@ -1265,9 +1275,9 @@ never measured.
   short-circuit or branch, branch-free 0/non-zero → 1/0 fold. The v1.6
   strict decrypt path and the F-08 AIT check now both call it, so the
   property lives in exactly one place. (The v1.4/v1.5 legacy path keeps
-  the formally-verified Jasmin `zupt_mac_verify_ct`; its non-Jasmin C
-  fallback and the carefully-tuned F-06 two-candidate fold are left
-  intact.)
+  the optional Jasmin-generated `zupt_mac_verify_ct`; no reproducible proof
+  artifact is retained here. Its non-Jasmin C fallback and the carefully-tuned
+  F-06 two-candidate fold are left intact.)
 - **A dudect-style timing test** (`tests/test_ct_timing.c`, after
   Reparaz–Balasch–Verbauwhede, DATE 2017). It times the compare over two
   input classes — a fixed tag vs an identical copy (FIX) and vs a random
@@ -4166,7 +4176,7 @@ build-time tool that is not redistributed.
 - "libzuptsdk is free software" → "Zupt is free software" (this is the
   zupt repo, not the libzuptsdk repo)
 - GitHub URL → git.securityops.co URL
-- Contact `zupt@riseup.net` → `sac@securityops.co`
+- Correct the project contact to `sac@securityops.co`
 - Appended a note explaining that VaptVupt is GPL not AGPL, with
   rationale for the deliberate licensing split
 
@@ -4205,12 +4215,12 @@ the github-old → github-new migration sprint) deleted as obsolete.
   `libzuptsdk-dev 2.0.0` installed
 
 
-## [2.2.2] god-tier audit — bug #16 (block-swap attack) fix
+## [2.2.2] project security review — bug #16 (block-swap attack) fix
 
-Independent formal cryptographic audit (using the then-current two-pass
-methodology) discovered a critical authenticated-encryption flaw in the
-shipped 2.2.2 binary. Investigation, root-cause, fix, regression test, and
-final verification documented below.
+A project source review using the then-current two-pass methodology discovered
+a critical authenticated-encryption flaw in the shipped 2.2.2 binary.
+Investigation, root cause, fix, regression test, and final verification are
+documented below. This was not an independent audit or certification.
 
 ### Bug #16 — CRITICAL: Block-swap attack on encrypted archives
 
@@ -4310,11 +4320,11 @@ Combined zupt + SDK            279 tests + 751k fuzz iters
 
 | Sprint | Bugs | Severity range |
 |---|---|---|
-| v2.2.1 (audit 1) | 6 | low to high |
-| v2.2.2 (audit 2) | 4 | low to medium |
-| v2.2.2 (formal audit 3) | 4 | low to high (Zip Slip) |
-| v2.2.2 (sprint 4) | 1 | critical (silent extract) |
-| v2.2.2 (god-tier audit) | 1 | **critical** (block-swap AEAD) |
+| v2.2.1 (project review 1) | 6 | low to high |
+| v2.2.2 (project review 2) | 4 | low to medium |
+| v2.2.2 (project review 3) | 4 | low to high (Zip Slip) |
+| v2.2.2 (project review 4) | 1 | critical (silent extract) |
+| v2.2.2 (project security review) | 1 | **critical** (block-swap AEAD) |
 | **Total** | **16** | all fixed and regression-tested |
 
 ### Known limitation accepted
@@ -4327,11 +4337,11 @@ say "checksum mismatch". This is documented in SECURITY.md and is
 acceptable because dedup is opt-in and not the default.
 
 
-## [2.2.2] formal audit pass — 2026-04-27 (no version bump)
+## [2.2.2] project security review pass — 2026-04-27 (no version bump)
 
-Post-release formal cryptographic audit by senior cryptographic engineering
-review. Two security-relevant bugs and two robustness bugs found and fixed.
-Version stays at 2.2.2; this is hardening of the same release.
+A post-release project security review found and fixed two security-relevant
+bugs and two robustness bugs. Version stays at 2.2.2; this is hardening of the
+same release, not an independent audit or certification.
 
 ### Bugs found and fixed
 
@@ -4403,10 +4413,10 @@ Compile-tested with `-Wpedantic` under GCC. Win32 code paths verified via
 ### Documentation updates
 
 - `SECURITY.md`: new "Threat model" and "Path traversal mitigation" sections
-- `AUDIT.md`: 2026-04-27 formal audit entry with cumulative test table
-- `README.md`: Security section bumped with audit confirmation
+- `AUDIT.md`: 2026-04-27 project review entry with cumulative test table
+- `README.md`: Security section updated with the project review summary
 - `doc/zupt.1`: SECURITY section mentions path-traversal protection
-- the then-current formal-audit methodology document
+- the then-current source-review methodology document
 
 ## [2.2.2] — 2026-04-27
 
@@ -4494,7 +4504,7 @@ Audit-driven hardening release. Six bugs found by code review and fixed; new aud
 
 2. **Unchecked `fwrite` in extract path** (`src/zupt_format.c`, six call sites: 1529, 1611, 1631, 1660, 1689, 1699). On a full disk or write error, the extractor reported success while files were corrupt. Each `fwrite` now checks the return; partial writes set the per-file `berr` flag, and the solid-file path returns `ZUPT_ERR_IO`. Found by reading the extract path with the question "what happens if the disk fills mid-extract?"
 
-3. **`mac_key` derived as a copy of `enc_key`** (`src/zupt_crypto_sdk.c`). The keyring's `mac_key` slot was filled with the same 32 bytes as `enc_key`. SDK-mode AEAD doesn't actually use this slot — block authentication runs through the libzuptsdk path — but if any legacy fall-through ever read `mac_key`, it would have used the encryption key as a MAC key. Both keys are now derived from the session key via SHA3-256 with domain-separation strings (`"ZUPT-SDK-ENC-KEY"`, `"ZUPT-SDK-MAC-KEY"`).
+3. **`mac_key` derived as a copy of `enc_key`** (`src/zupt_crypto_sdk.c`). The keyring's `mac_key` slot was filled with the same 32 bytes as `enc_key`, even though ZUPT's shared payload pipeline uses that key for HMAC-SHA256. Both payload keys are now derived from the SDK-wrapped session secret via SHA3-256 with domain-separation strings (`"ZUPT-SDK-ENC-KEY"`, `"ZUPT-SDK-MAC-KEY"`).
 
 4. **Length-overflow in LZ decoder** (`src/zupt_lz.c:33`). `lz_read_extra` accumulated a length value with no upper bound. A crafted block with many `0xFF` extension bytes could overflow `size_t`, wrapping back to a small value that passed the subsequent `op + match_len > dst_len` check, then the inner copy loop ran for many iterations. Capped accumulation at 2^32 with explicit overflow return; both call sites check.
 
@@ -4561,7 +4571,7 @@ zuptsdk integration release. Replaces zupt's legacy hybrid combiner (XOR+SHA3-51
 | HPKE binding | None | RFC 9180 §5 context (suite + AAD bound) |
 | Anti-fault decap | None | Double ML-KEM decap + CT compare |
 | Password KDF | PBKDF2-SHA256 | Argon2id (RFC 9106 OWASP minimums) |
-| AEAD | AES-256-CTR + HMAC-SHA256 | XChaCha20-Poly1305 (default) |
+| Payload protection | AES-256-CTR + HMAC-SHA256 | AES-256-CTR + HMAC-SHA256 |
 | Test coverage | 9 tests | 9 + 11 SDK = 20 + inherited 169 SDK tests |
 
 ### Backward compatibility

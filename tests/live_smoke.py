@@ -10,8 +10,8 @@ downloads), rather than importing the Flask application directly.
 from __future__ import annotations
 
 import argparse
-import http.cookiejar
 import html
+import http.cookiejar
 import json
 import os
 import re
@@ -21,13 +21,12 @@ import time
 import urllib.error
 import urllib.parse
 import urllib.request
+from collections.abc import Mapping
 from dataclasses import dataclass
 from email.message import Message
-from typing import Mapping
-
 
 DEFAULT_URL = "http://127.0.0.1:8181"
-DEFAULT_VERSION = "5.2.12"
+DEFAULT_VERSION = "5.2.13"
 DEFAULT_CLI_VERSION = "5.2.10"
 PASSWORD = "  -ZUPT live smoke passphrase 2026!  "
 PAYLOAD = (
@@ -241,11 +240,14 @@ def csrf_from_index(audit: Audit, client: HttpClient, body: str) -> str:
     token = html.unescape(match.group(1))
     csrf_cookies = [cookie for cookie in client.cookies if cookie.name == "csrf_token"]
     audit.check(len(csrf_cookies) == 1, "server did not set exactly one CSRF cookie")
-    audit.check(csrf_cookies[0].value == token,
-                "CSRF form token and cookie do not match")
+    audit.check(
+        csrf_cookies[0].value == token, "CSRF form token and cookie do not match"
+    )
     if urllib.parse.urlsplit(client.base_url).scheme == "https":
-        audit.check(csrf_cookies[0].secure,
-                    "HTTPS service issued its CSRF cookie without Secure")
+        audit.check(
+            csrf_cookies[0].secure,
+            "HTTPS service issued its CSRF cookie without Secure",
+        )
     return token
 
 
@@ -258,12 +260,8 @@ def generate_keypair(
     audit.check("Keypair Generated" in body, f"{kind} key generation failed")
     audit.check("<title>Error" not in body, f"{kind} key generation returned an error")
 
-    private_match = re.search(
-        r'href=["\'](/download-key/[0-9a-f]+/private)["\']', body
-    )
-    public_match = re.search(
-        r'href=["\'](/download-key/[0-9a-f]+/public)["\']', body
-    )
+    private_match = re.search(r'href=["\'](/download-key/[0-9a-f]+/private)["\']', body)
+    public_match = re.search(r'href=["\'](/download-key/[0-9a-f]+/public)["\']', body)
     audit.check(private_match is not None, f"{kind} private-key link is missing")
     audit.check(public_match is not None, f"{kind} public-key link is missing")
     assert private_match is not None and public_match is not None
@@ -278,7 +276,9 @@ def generate_keypair(
     public_response = client.get(public_path)
     private_key = attachment(audit, private_response, f"{kind} private-key download")
     public_key = attachment(audit, public_response, f"{kind} public-key download")
-    audit.check(private_key != public_key, f"{kind} public and private keys are identical")
+    audit.check(
+        private_key != public_key, f"{kind} public and private keys are identical"
+    )
     audit.check(
         "zupt_private.key" in private_response.headers.get("Content-Disposition", ""),
         f"{kind} private key has a stale download name",
@@ -350,8 +350,10 @@ def round_trip(
         "/info", {"csrf_token": csrf}, {"archive": archive_part}
     )
     info_body = success_page(audit, info_response, f"{mode} archive info")
-    audit.check("Format" in info_body or "format" in info_body,
-                f"{mode} archive info did not report format metadata")
+    audit.check(
+        "Format" in info_body or "format" in info_body,
+        f"{mode} archive info did not report format metadata",
+    )
 
     verify_fields = {"csrf_token": csrf, **credential_fields}
     verify_response = client.post_multipart(
@@ -367,15 +369,21 @@ def round_trip(
         {"archive": archive_part, **decrypt_files},
     )
     extracted = attachment(audit, extract_response, f"{mode} extraction")
-    audit.check(extracted == PAYLOAD, f"{mode} extraction did not reproduce input bytes")
+    audit.check(
+        extracted == PAYLOAD, f"{mode} extraction did not reproduce input bytes"
+    )
     audit.check(
         source_name in extract_response.headers.get("Content-Disposition", ""),
         f"{mode} extraction has an unexpected download name",
     )
 
 
-def run(base_url: str, timeout: float, expected_version: str,
-        expected_cli_version: str = DEFAULT_CLI_VERSION) -> Audit:
+def run(
+    base_url: str,
+    timeout: float,
+    expected_version: str,
+    expected_cli_version: str = DEFAULT_CLI_VERSION,
+) -> Audit:
     audit = Audit()
     client = HttpClient(base_url, timeout)
     client.add_secret(PASSWORD)
@@ -387,7 +395,9 @@ def run(base_url: str, timeout: float, expected_version: str,
     except (json.JSONDecodeError, UnicodeDecodeError) as exc:
         raise SmokeFailure("health probe did not return valid JSON") from exc
     audit.check(health_json.get("ok") is True, "health probe reports not-ok")
-    audit.check(health_json.get("service") == "zupt-web", "health service name is stale")
+    audit.check(
+        health_json.get("service") == "zupt-web", "health service name is stale"
+    )
     audit.check(
         health_json.get("version") == expected_version,
         f"health version is not {expected_version}",
@@ -398,7 +408,9 @@ def run(base_url: str, timeout: float, expected_version: str,
         "X-Frame-Options",
         "Referrer-Policy",
     ):
-        audit.check(bool(health.headers.get(header)), f"health response is missing {header}")
+        audit.check(
+            bool(health.headers.get(header)), f"health response is missing {header}"
+        )
 
     version = client.get("/version")
     audit.check(version.status == 200, "version endpoint did not return HTTP 200")
@@ -419,14 +431,14 @@ def run(base_url: str, timeout: float, expected_version: str,
     audit.check(expected_version in index_body, "index is missing the expected version")
     audit.check('action="/keygen"' in index_body, "hybrid key form is missing")
     audit.check('action="/keygen-pqonly"' in index_body, "PQ-only key form is missing")
-    audit.check("/keygen-sdk" not in index_body, "retired SDK key form is still exposed")
+    audit.check(
+        "/keygen-sdk" not in index_body, "retired SDK key form is still exposed"
+    )
     csrf = csrf_from_index(audit, client, index_body)
     audit.stage("health, version, security headers, CSRF, and current UI")
 
     hybrid_keys = generate_keypair(audit, client, csrf, "/keygen", "hybrid")
-    pq_only_keys = generate_keypair(
-        audit, client, csrf, "/keygen-pqonly", "PQ-only"
-    )
+    pq_only_keys = generate_keypair(audit, client, csrf, "/keygen-pqonly", "PQ-only")
     keypairs = {"hybrid": hybrid_keys, "pq-only": pq_only_keys}
     audit.stage("hybrid and full-PQ key generation plus key downloads")
 
@@ -462,7 +474,9 @@ def run(base_url: str, timeout: float, expected_version: str,
         },
         {"file": FilePart("invalid-combination.bin", PAYLOAD)},
     )
-    audit.check(rejection.status == 200, "solid+dedup rejection did not return HTTP 200")
+    audit.check(
+        rejection.status == 200, "solid+dedup rejection did not return HTTP 200"
+    )
     rejection_body = rejection.text()
     audit.check("<title>Error" in rejection_body, "solid+dedup was not rejected")
     audit.check(
@@ -513,8 +527,12 @@ def main(argv: list[str] | None = None) -> int:
     args = parse_args(sys.argv[1:] if argv is None else argv)
     started = time.monotonic()
     try:
-        audit = run(args.base_url, args.timeout, args.expected_version,
-                    args.expected_cli_version)
+        audit = run(
+            args.base_url,
+            args.timeout,
+            args.expected_version,
+            args.expected_cli_version,
+        )
     except (SmokeFailure, OSError) as exc:
         print(f"FAIL: {exc}", file=sys.stderr)
         return 1

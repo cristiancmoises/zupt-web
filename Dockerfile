@@ -38,14 +38,17 @@ FROM ubuntu:24.04
 
 LABEL maintainer="Cristian Cezar Moisés <sac@securityops.co>"
 LABEL description="ZUPT Web — post-quantum backup utility browser frontend"
-LABEL version="5.2.12"
+LABEL version="5.2.13"
 LABEL org.opencontainers.image.title="zupt-web"
-LABEL org.opencontainers.image.version="5.2.12"
+LABEL org.opencontainers.image.version="5.2.13"
 LABEL org.opencontainers.image.licenses="AGPL-3.0-or-later"
 LABEL org.opencontainers.image.source="https://git.securityops.co/cristiancmoises/zupt-web"
 LABEL org.opencontainers.image.documentation="https://git.securityops.co/cristiancmoises/zupt-web/src/branch/main/README.md"
 LABEL org.opencontainers.image.vendor="securityops.co"
 LABEL org.opencontainers.image.commercial="sac@securityops.co"
+LABEL io.zupt.core.revision="0165fbd78faf78046d49e004622820ef79061f17"
+LABEL io.zupt.codec.version="2.65.13"
+LABEL io.zupt.archive.version="1.6"
 
 RUN apt-get update && \
     apt-get install -y --no-install-recommends python3 tini && \

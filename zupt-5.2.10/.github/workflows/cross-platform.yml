@@ -6,12 +6,97 @@ name: target release packages
 on:
   workflow_call:
   workflow_dispatch:
+    inputs:
+      paths_only:
+        description: Run Windows argument and extraction-path diagnostics only
+        type: boolean
+        default: false
+      macos_checks_only:
+        description: Run macOS source checks without assembling release assets
+        type: boolean
+        default: false
 
 permissions:
   contents: read
 
 jobs:
+  macos-checks:
+    name: macOS source-check diagnostics
+    if: github.event_name == 'workflow_dispatch' && inputs.macos_checks_only
+    runs-on: macos-latest
+    timeout-minutes: 45
+    steps:
+      - name: Check out the audited source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+          lfs: false
+          submodules: false
+      - name: Audit source before building
+        run: bash scripts/check-source-only.sh
+      - name: Build and run independent source checks
+        run: |
+          set -Eeuo pipefail
+          make -j2 V=1 WITH_SDK=0 WITH_PQBOX=0 INSTALL_LEGACY_ALIAS=0
+          make -k -j1 V=1 WITH_SDK=0 WITH_PQBOX=0 INSTALL_LEGACY_ALIAS=0 check
+
+  windows-paths:
+    name: Windows argument and extraction-path diagnostics
+    if: github.event_name == 'workflow_dispatch' && inputs.paths_only
+    runs-on: windows-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        shell: msys2 {0}
+    steps:
+      - name: Check out the source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          lfs: false
+          submodules: false
+      - name: Install the Windows C toolchain
+        uses: msys2/setup-msys2@66cd2cce69caa17b53920067426061ca1de3a884 # v2.32.0
+        with:
+          msystem: UCRT64
+          update: true
+          install: mingw-w64-ucrt-x86_64-gcc coreutils diffutils findutils git make python
+      - name: Check native package documentation fixtures
+        run: python3 -B tests/test_installed_docs.py
+
+      - name: Record native argument conversion and test extraction confinement
+        run: |
+          set -Eeuo pipefail
+          probe=$(mktemp -d)
+          trap 'rm -rf -- "$probe"' EXIT
+          mkdir "$probe/outside"
+          MSYS=winsymlinks:nativestrict CYGWIN=winsymlinks:nativestrict \
+            ln -s -- "$probe/outside" "$probe/root-link"
+          test -L "$probe/root-link"
+          cat > "$probe/argument.c" <<'C'
+          #include <stdio.h>
+          int main(int argc, char **argv) {
+              if (argc != 2) return 2;
+              return fputs(argv[1], stdout) == EOF ? 1 : 0;
+          }
+          C
+          gcc -std=c11 -Wall -Wextra -Werror "$probe/argument.c" -o "$probe/argument.exe"
+          "$probe/argument.exe" "$probe/root-link/child" > "$probe/default-argument"
+          native_base=$(cygpath -m "$probe")
+          test "$native_base" -ef "$probe"
+          literal="$native_base/root-link/child"
+          MSYS2_ARG_CONV_EXCL='*' "$probe/argument.exe" "$literal" > "$probe/literal-argument"
+          printf '%s' "$literal" > "$probe/expected-argument"
+          cmp "$probe/expected-argument" "$probe/literal-argument"
+          printf 'Default conversion: '; cat "$probe/default-argument"; printf '\n'
+          printf 'Literal argument: '; cat "$probe/literal-argument"; printf '\n'
+          make -j2 CC=gcc V=1 WITH_SDK=0 WITH_PQBOX=0 INSTALL_LEGACY_ALIAS=0
+          if [[ -x ./zupt.exe ]]; then binary=$PWD/zupt.exe; else binary=$PWD/zupt; fi
+          CC=gcc bash tests/test_path_traversal.sh "$binary"
+
   windows-x86_64:
+    if: github.event_name != 'workflow_dispatch' || (!inputs.paths_only && !inputs.macos_checks_only)
     name: Windows x86_64 package and smoke test
     runs-on: windows-latest
     defaults:
@@ -129,15 +214,18 @@ jobs:
 
       - name: Assemble Windows release files
         run: |
+          set -Eeuo pipefail
           version=$(sed -n 's/^#define ZUPT_VERSION_STRING "\([^"]*\)".*/\1/p' include/zupt.h)
           bundle="out/work/zupt-$version-windows-x86_64"
-          mkdir -p out "$bundle"
+          mkdir -p out "$bundle/docs"
           if [[ -x ./zupt.exe ]]; then source_exe=./zupt.exe; else source_exe=./zupt; fi
           install -m 0755 "$source_exe" "$bundle/zupt.exe"
           install -m 0644 README.md README.pt-BR.md DOCUMENTACAO.pt-BR.md \
-            CHANGELOG.md LICENSE LICENSE-AGPL-3.0 LICENSE-GPL-3.0 \
+            CHANGELOG.md AUDIT.md INSTALL.md SECURITY.md DISTRIBUTION.md \
+            THREAT_MODEL.md LICENSE LICENSE-AGPL-3.0 LICENSE-GPL-3.0 \
             LICENSE-BSD-2-Clause LICENSE-BSD-3-Clause LICENSE-CC0-1.0 \
             NOTICE THIRD-PARTY-NOTICES.md "$bundle/"
+          install -m 0644 docs/USER_GUIDE.md docs/GUIA_USUARIO.pt-BR.md "$bundle/docs/"
           toolchain_prefix=${MINGW_PREFIX:-/ucrt64}
           install -m 0644 \
             "$toolchain_prefix/share/licenses/crt/COPYING" \
@@ -149,10 +237,10 @@ jobs:
             "$toolchain_prefix/share/licenses/crt/COPYING.MinGW-w64.txt" \
             "$bundle/COPYING.MinGW-w64.txt"
           install -m 0644 \
-            "$toolchain_prefix/share/licenses/gcc-libs/COPYING3" \
+            "$toolchain_prefix/share/licenses/libgcc/COPYING3" \
             "$bundle/GCC-COPYING3.txt"
           install -m 0644 \
-            "$toolchain_prefix/share/licenses/gcc-libs/COPYING.RUNTIME" \
+            "$toolchain_prefix/share/licenses/libgcc/COPYING.RUNTIME" \
             "$bundle/GCC-RUNTIME-LIBRARY-EXCEPTION.txt"
           zip_path=$PWD/out/zupt-$version-windows-x86_64.zip
           (cd out/work && zip -9 -r "$zip_path" \
@@ -171,6 +259,7 @@ jobs:
           }
           trap cleanup EXIT HUP INT TERM
           unzip -q "$zip_path" -d "$extract_root"
+          python3 scripts/check-installed-docs.py "$PWD" "$extract_root" windows
           for notice in MINGW-CRT-COPYING.txt COPYING.MinGW-w64-runtime.txt \
               COPYING.MinGW-w64.txt GCC-COPYING3.txt \
               GCC-RUNTIME-LIBRARY-EXCEPTION.txt; do
@@ -210,6 +299,7 @@ jobs:
           retention-days: 7
 
   macos-native:
+    if: github.event_name != 'workflow_dispatch' || (!inputs.paths_only && !inputs.macos_checks_only)
     name: macOS native DMG and installed-image test
     runs-on: macos-latest
     steps:
@@ -241,6 +331,7 @@ jobs:
           }
           trap cleanup EXIT HUP INT TERM
           hdiutil attach -nobrowse -readonly -mountpoint "$mount_point" "$dmg" >/dev/null
+          python3 scripts/check-installed-docs.py "$PWD" "$mount_point" macos
           version=$(sed -n 's/^#define ZUPT_VERSION_STRING "\([^"]*\)".*/\1/p' \
             include/zupt.h)
           packaged_binary=$mount_point/ZUPT.app/Contents/MacOS/zupt
