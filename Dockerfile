@@ -93,7 +93,7 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
   CMD ["python3", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/healthz', timeout=3).read()"]
 
 ENTRYPOINT ["/usr/bin/tini", "--"]
-CMD ["sh", "-c", "if [ -z \"${ZUPT_SECRET_KEY:-}\" ] && [ -z \"${VAPTVUPT_SECRET_KEY:-}\" ]; then export ZUPT_SECRET_KEY=$(python3 -c 'import secrets; print(secrets.token_hex(32))'); fi; exec gunicorn --bind 0.0.0.0:8080 --workers 2 --worker-tmp-dir /tmp/zupt-work --timeout 660 --graceful-timeout 30 --keep-alive 5 --max-requests 1000 --max-requests-jitter 100 --access-logfile - --error-logfile - app:app"]
+CMD ["sh", "-c", "if [ -z \"${ZUPT_SECRET_KEY:-}\" ] && [ -z \"${VAPTVUPT_SECRET_KEY:-}\" ]; then export ZUPT_SECRET_KEY=$(python3 -c 'import secrets; print(secrets.token_hex(32))'); fi; exec gunicorn --no-control-socket --bind 0.0.0.0:8080 --workers 2 --worker-tmp-dir /tmp/zupt-work --timeout 660 --graceful-timeout 30 --keep-alive 5 --max-requests 1000 --max-requests-jitter 100 --access-logfile - --error-logfile - app:app"]
 
 # Put the source revision last so changing only VCS_REF does not invalidate the
 # runtime dependency and application layers.

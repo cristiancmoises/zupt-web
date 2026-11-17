@@ -82,7 +82,8 @@ The supported container fixes `ZUPT_BIN=/usr/local/bin/zupt` and
 1001, drops all capabilities, enables `no-new-privileges`, and caps memory at
 4 GiB and processes at 256. The application timeout is at most 600 seconds;
 Gunicorn waits 660 seconds. Custom launchers can set `ZUPT_BIN` and
-`ZUPT_WORKDIR` directly.
+`ZUPT_WORKDIR` directly. The unused Gunicorn control socket is disabled to
+avoid writes to the read-only root filesystem.
 
 Passwords reach the CLI through inherited standard input (`--pass-fd 0`),
 not process arguments. Forms use CSRF checks. Jobs use isolated directories
@@ -102,6 +103,19 @@ docker exec zupt-web zupt version
 `/healthz` reports process liveness. `/version` reports CLI readiness and returns
 503 when the binary is unavailable. `/usr/local/bin/vaptvupt` remains an alias
 for older scripts.
+
+With the service running, use this bounded quick HTTP check for versions,
+VV and password roundtrips, empty files, and CSRF rejection:
+
+```sh
+python3 tests/container_http_smoke.py --base-url http://127.0.0.1:8181
+```
+
+Run the full HTTP route and crypto-mode matrix separately:
+
+```sh
+python3 tests/live_smoke.py --base-url http://127.0.0.1:8181
+```
 
 ## Upgrade compatibility
 

@@ -83,7 +83,8 @@ O contêiner usa `ZUPT_BIN=/usr/local/bin/zupt` e
 UID 1001, remove todas as capabilities, ativa `no-new-privileges` e limita
 memória a 4 GiB e processos a 256. A aplicação permite até 600 segundos por
 operação; o Gunicorn espera 660 segundos. Outros launchers podem definir
-`ZUPT_BIN` e `ZUPT_WORKDIR` diretamente.
+`ZUPT_BIN` e `ZUPT_WORKDIR` diretamente. O socket de controle não utilizado
+do Gunicorn fica desativado para evitar escritas na raiz somente leitura.
 
 As senhas chegam ao CLI pela entrada padrão herdada (`--pass-fd 0`), não
 pelos argumentos do processo. Os formulários usam CSRF; cada operação tem
@@ -103,6 +104,19 @@ docker exec zupt-web zupt version
 O `/healthz` informa que o processo está ativo. O `/version` verifica a
 prontidão do CLI e retorna 503 quando o binário está indisponível.
 `/usr/local/bin/vaptvupt` permanece como alias para scripts antigos.
+
+Com o serviço em execução, use esta verificação HTTP rápida e limitada para
+versões, compactação e extração com VV e senha, arquivos vazios e rejeição CSRF:
+
+```sh
+python3 tests/container_http_smoke.py --base-url http://127.0.0.1:8181
+```
+
+Execute separadamente a matriz completa de rotas HTTP e modos criptográficos:
+
+```sh
+python3 tests/live_smoke.py --base-url http://127.0.0.1:8181
+```
 
 ## Compatibilidade na atualização
 

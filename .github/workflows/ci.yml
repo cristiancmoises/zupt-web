@@ -147,6 +147,18 @@ jobs:
           job_count=$(docker exec zupt-web-ci sh -c \
             'find /tmp/zupt-work -mindepth 1 -maxdepth 1 -type d | wc -l')
           test "$job_count" = 2
+          log_file="$RUNNER_TEMP/zupt-web-ci.log"
+          if ! docker logs zupt-web-ci >"$log_file" 2>&1; then
+            cat "$log_file" >&2
+            echo 'could not collect container logs' >&2
+            exit 1
+          fi
+          if grep --fixed-strings 'Control server error:' "$log_file"; then
+            echo 'Gunicorn control server failed' >&2
+            exit 1
+          else
+            test "$?" -eq 1
+          fi
       - name: Export the tested image and source revision
         run: |
           test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
