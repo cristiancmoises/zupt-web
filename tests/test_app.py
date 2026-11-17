@@ -10,7 +10,27 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
+from werkzeug.test import EnvironBuilder
+
 import app as zupt_web
+
+
+class CountingInput(io.BytesIO):
+    """Count bytes actually consumed through either WSGI stream interface."""
+
+    def __init__(self, value):
+        super().__init__(value)
+        self.bytes_read = 0
+
+    def read(self, size: int | None = -1):
+        value = super().read(size)
+        self.bytes_read += len(value)
+        return value
+
+    def readinto(self, buffer):
+        count = super().readinto(buffer)
+        self.bytes_read += count
+        return count
 
 
 class ZuptWebTestCase(unittest.TestCase):
@@ -39,6 +59,196 @@ class ZuptWebTestCase(unittest.TestCase):
         if cookie is None:
             self.fail("CSRF cookie is missing")
         return cookie.value
+
+    def post_counted_form(
+        self,
+        token,
+        size,
+        *,
+        content_type="application/x-www-form-urlencoded",
+        length_kind="known",
+        terminated=False,
+    ):
+        prefix = f"csrf_token={token}&padding=".encode("ascii")
+        self.assertGreaterEqual(size, len(prefix))
+        stream = CountingInput(prefix + b"x" * (size - len(prefix)))
+        builder = EnvironBuilder(
+            path="/",
+            method="POST",
+            input_stream=stream,
+            content_type=content_type,
+        )
+        try:
+            environ = builder.get_environ()
+            if length_kind == "absent":
+                environ.pop("CONTENT_LENGTH", None)
+            elif length_kind == "empty":
+                environ["CONTENT_LENGTH"] = ""
+            if terminated:
+                environ["wsgi.input_terminated"] = True
+            else:
+                environ.pop("wsgi.input_terminated", None)
+            # A Request preserves absent framing; rebuilding an environ can
+            # infer Content-Length from this deliberately seekable test stream.
+            response = self.client.open(zupt_web.app.request_class(environ))
+        finally:
+            builder.close()
+        return response, stream
+
+    def test_urlencoded_form_budget_preserves_boundaries_and_configuration(self):
+        token = self.csrf()
+        budget = 256
+        original = {
+            key: zupt_web.app.config[key]
+            for key in ("MAX_FORM_MEMORY_SIZE", "MAX_CONTENT_LENGTH")
+        }
+        cases = (
+            (
+                "at_form_limit",
+                budget,
+                original["MAX_CONTENT_LENGTH"],
+                budget,
+                False,
+                405,
+            ),
+            (
+                "over_form_limit",
+                budget,
+                original["MAX_CONTENT_LENGTH"],
+                budget + 1,
+                False,
+                413,
+            ),
+            (
+                "charset_parameter",
+                budget,
+                original["MAX_CONTENT_LENGTH"],
+                budget + 1,
+                True,
+                413,
+            ),
+            ("smaller_global", budget, 128, 129, False, 413),
+            ("zero_global", budget, 0, budget, False, 413),
+            ("unlimited_global", budget, None, budget + 1, False, 413),
+            ("unlimited_form", None, 128, 129, False, 413),
+            ("unlimited_form_and_global", None, None, budget + 1, False, 405),
+            ("zero_form", 0, original["MAX_CONTENT_LENGTH"], budget, False, 413),
+        )
+        for name, form_limit, upload_limit, size, charset, expected in cases:
+            limits = {
+                "MAX_FORM_MEMORY_SIZE": form_limit,
+                "MAX_CONTENT_LENGTH": upload_limit,
+            }
+            mime = "application/x-www-form-urlencoded"
+            if charset:
+                mime += "; charset=UTF-8"
+            with (
+                self.subTest(case=name),
+                mock.patch.dict(zupt_web.app.config, limits),
+                mock.patch.object(zupt_web, "run_zupt") as runner,
+            ):
+                response, stream = self.post_counted_form(
+                    token, size, content_type=mime
+                )
+                response.close()
+                # POST / is intentionally unsupported. A 405 proves CSRF/form
+                # processing accepted the body without invoking a work route.
+                self.assertEqual(response.status_code, expected)
+                self.assertEqual(stream.bytes_read, 0 if expected == 413 else size)
+                runner.assert_not_called()
+                self.assertEqual(list(zupt_web.WORKDIR.iterdir()), [])
+                self.assertEqual(
+                    {key: zupt_web.app.config[key] for key in limits}, limits
+                )
+            self.assertEqual(
+                {key: zupt_web.app.config[key] for key in original}, original
+            )
+
+    def test_urlencoded_unknown_length_is_bounded_or_fails_closed(self):
+        token = self.csrf()
+        budget = 256
+        original = {
+            key: zupt_web.app.config[key]
+            for key in ("MAX_FORM_MEMORY_SIZE", "MAX_CONTENT_LENGTH")
+        }
+        limits = {**original, "MAX_FORM_MEMORY_SIZE": budget}
+        for length_kind in ("absent", "empty"):
+            for terminated, size, expected in (
+                (True, budget - 1, 405),
+                (True, budget, 413),
+                (True, budget + 1, 413),
+                (False, budget + 1, 403),
+            ):
+                with (
+                    self.subTest(length=length_kind, terminated=terminated, size=size),
+                    mock.patch.dict(zupt_web.app.config, limits),
+                    mock.patch.object(zupt_web, "run_zupt") as runner,
+                ):
+                    response, stream = self.post_counted_form(
+                        token, size, length_kind=length_kind, terminated=terminated
+                    )
+                    response.close()
+                    self.assertEqual(response.status_code, expected)
+                    self.assertLessEqual(stream.bytes_read, budget if terminated else 0)
+                    if expected == 405:
+                        self.assertEqual(stream.bytes_read, size)
+                    runner.assert_not_called()
+                    self.assertEqual(list(zupt_web.WORKDIR.iterdir()), [])
+                    self.assertEqual(
+                        {key: zupt_web.app.config[key] for key in limits}, limits
+                    )
+                self.assertEqual(
+                    {key: zupt_web.app.config[key] for key in original}, original
+                )
+
+    def test_multipart_file_and_nonfile_field_keep_distinct_budgets(self):
+        token = self.csrf()
+        budget = 500_000
+        original = {
+            key: zupt_web.app.config[key]
+            for key in ("MAX_FORM_MEMORY_SIZE", "MAX_CONTENT_LENGTH")
+        }
+        self.assertEqual(original["MAX_FORM_MEMORY_SIZE"], budget)
+        self.assertEqual(original["MAX_CONTENT_LENGTH"], 512 * 1024 * 1024)
+
+        def fake_run(args, timeout=600, input_data=None, cwd=None):
+            Path(args[-3]).write_bytes(b"archive")
+            return 0, "ok", ""
+
+        with mock.patch.object(zupt_web, "run_zupt", side_effect=fake_run) as runner:
+            response = self.client.post(
+                "/compress",
+                data={
+                    "csrf_token": token,
+                    "password": "fixture-password",
+                    "level": "9",
+                    "codec": "vv",
+                    "file": (io.BytesIO(b"x" * (budget + 1)), "payload.txt"),
+                },
+                content_type="multipart/form-data",
+            )
+            try:
+                self.assertEqual(response.status_code, 200)
+                runner.assert_called_once()
+            finally:
+                response.close()
+        self.assertEqual(list(zupt_web.WORKDIR.iterdir()), [])
+
+        with mock.patch.object(zupt_web, "run_zupt") as runner:
+            response = self.client.post(
+                "/compress",
+                data={
+                    "csrf_token": token,
+                    "padding": "x" * (budget + 1),
+                    "file": (io.BytesIO(b"payload"), "payload.txt"),
+                },
+                content_type="multipart/form-data",
+            )
+            response.close()
+            self.assertEqual(response.status_code, 413)
+            runner.assert_not_called()
+        self.assertEqual(list(zupt_web.WORKDIR.iterdir()), [])
+        self.assertEqual({key: zupt_web.app.config[key] for key in original}, original)
 
     def test_health_and_security_headers(self):
         response = self.client.get("/healthz")
@@ -84,6 +294,28 @@ class ZuptWebTestCase(unittest.TestCase):
     def test_csrf_is_required(self):
         response = self.client.post("/compress", data={})
         self.assertEqual(response.status_code, 403)
+
+    def test_non_ascii_csrf_is_rejected_before_cli(self):
+        token = self.csrf()
+        for cookie, submitted, expected in (
+            (token, token, 200),
+            (token, "é", 403),
+            ("é", "é", 403),
+            ("é", token, 403),
+        ):
+            with (
+                self.subTest(
+                    cookie_ascii=cookie.isascii(), form_ascii=submitted.isascii()
+                ),
+                mock.patch.dict(zupt_web.app.config, PROPAGATE_EXCEPTIONS=False),
+                mock.patch.object(zupt_web, "run_zupt") as runner,
+            ):
+                self.client.set_cookie("csrf_token", cookie)
+                response = self.client.post("/compress", data={"csrf_token": submitted})
+                response.close()
+                self.assertEqual(response.status_code, expected)
+                runner.assert_not_called()
+                self.assertEqual(list(zupt_web.WORKDIR.iterdir()), [])
 
     def test_secure_csrf_cookie_can_be_required_behind_proxy(self):
         previous = zupt_web.COOKIE_SECURE

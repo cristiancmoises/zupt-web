@@ -78,6 +78,12 @@ As variáveis `ZUPT_*` têm precedência sobre os nomes de compatibilidade
 | `ZUPT_EXTRACT_TIMEOUT` | `600` | Tempo de extração/verificação, 1–600 segundos |
 | `ZUPT_COOKIE_SECURE` | `0` | Use `1` quando o navegador acessar exclusivamente por HTTPS |
 
+Por padrão, corpos URLencoded e cada campo multipart que não seja arquivo
+têm limite de 500.000 bytes, dentro do limite total da requisição. Um corpo
+URLencoded sem tamanho conhecido deve ficar abaixo desse limite; ao
+atingi-lo, a requisição é recusada para evitar dados truncados. Envios de
+arquivos mantêm o limite total da requisição acima.
+
 O contêiner usa `ZUPT_BIN=/usr/local/bin/zupt` e
 `ZUPT_WORKDIR=/tmp/zupt-work`, um tmpfs de 2 GiB com modo 0700. Executa como
 UID 1001, remove todas as capabilities, ativa `no-new-privileges` e limita
@@ -118,6 +124,11 @@ Execute separadamente a matriz completa de rotas HTTP e modos criptográficos:
 python3 tests/live_smoke.py --base-url http://127.0.0.1:8181
 ```
 
+Em loopback, o teste também exige HTTP 413 para formulários URLencoded
+excessivos com Content-Length e transferência em chunks. Em URLs remotas,
+somente essas verificações negativas informam `NOT RUN`; os testes de rotas
+e criptografia continuam.
+
 ## Compatibilidade na atualização
 
 Este perfil compilado do fonte exclui o `libvuptsdk` opaco usado pelo ZUPT Web
@@ -131,7 +142,7 @@ criptografar novamente os arquivos. Consulte [MIGRATION.md](MIGRATION.md).
 ```sh
 ./build-zupt.sh --verify-only
 python3 -m venv .venv
-.venv/bin/pip install --require-hashes -r requirements.txt
+.venv/bin/pip install --require-hashes --only-binary=:all: -r requirements.txt
 .venv/bin/python -m unittest discover -s tests -v
 shellcheck setup.sh build-zupt.sh
 docker compose config --quiet

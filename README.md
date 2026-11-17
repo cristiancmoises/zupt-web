@@ -77,6 +77,12 @@ compatibility names used by releases 3.0.0–5.2.1.
 | `ZUPT_EXTRACT_TIMEOUT` | `600` | Extraction/verification timeout, 1–600 seconds |
 | `ZUPT_COOKIE_SECURE` | `0` | Use `1` for browser access exclusively through HTTPS |
 
+By default, URL-encoded bodies and each non-file multipart field have a
+500,000-byte budget, within the total request limit. A URL-encoded body
+without a known length must stay below that budget; reaching it is rejected
+to prevent parsing truncated data. File uploads retain the total request
+limit above.
+
 The supported container fixes `ZUPT_BIN=/usr/local/bin/zupt` and
 `ZUPT_WORKDIR=/tmp/zupt-work`, backed by a mode-0700 2 GiB tmpfs. It uses uid
 1001, drops all capabilities, enables `no-new-privileges`, and caps memory at
@@ -117,6 +123,10 @@ Run the full HTTP route and crypto-mode matrix separately:
 python3 tests/live_smoke.py --base-url http://127.0.0.1:8181
 ```
 
+Loopback runs also require HTTP 413 for oversized URL-encoded forms with
+Content-Length and chunked framing. On remote URLs, only those negative
+checks report `NOT RUN`; the existing route and crypto checks continue.
+
 ## Upgrade compatibility
 
 This source-only build excludes the opaque `libvuptsdk` used by ZUPT Web
@@ -131,7 +141,7 @@ archives until you have restored, verified, and re-encrypted them. See
 ```sh
 ./build-zupt.sh --verify-only
 python3 -m venv .venv
-.venv/bin/pip install --require-hashes -r requirements.txt
+.venv/bin/pip install --require-hashes --only-binary=:all: -r requirements.txt
 .venv/bin/python -m unittest discover -s tests -v
 shellcheck setup.sh build-zupt.sh
 docker compose config --quiet

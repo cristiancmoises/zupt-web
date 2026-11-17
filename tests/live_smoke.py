@@ -21,7 +21,7 @@ import time
 import urllib.error
 import urllib.parse
 import urllib.request
-from collections.abc import Mapping
+from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 from email.message import Message
 
@@ -102,9 +102,10 @@ class HttpClient:
         self,
         path: str,
         *,
-        data: bytes | None = None,
+        data: bytes | Iterable[bytes] | None = None,
         headers: Mapping[str, str] | None = None,
         method: str | None = None,
+        expected_status: int = 200,
     ) -> Response:
         request_headers = {
             "Accept": "*/*",
@@ -118,12 +119,23 @@ class HttpClient:
         )
         try:
             with self.opener.open(request, timeout=self.timeout) as raw:
-                return Response(raw.status, raw.headers, raw.read())
+                if raw.status != expected_status:
+                    raise SmokeFailure(
+                        f"{request.get_method()} {path} returned HTTP {raw.status}; "
+                        f"expected HTTP {expected_status}"
+                    )
+                body = raw.read(4096) if raw.status >= 400 else raw.read()
+                return Response(raw.status, raw.headers, body)
         except urllib.error.HTTPError as exc:
-            body = exc.read(4096).decode("utf-8", errors="replace")
-            excerpt = self._scrub(" ".join(body.split()))[:500]
+            with exc:
+                body = exc.read(4096)
+                if exc.code == expected_status:
+                    return Response(exc.code, exc.headers, body)
+            excerpt = self._scrub(
+                " ".join(body.decode("utf-8", errors="replace").split())
+            )[:500]
             raise SmokeFailure(
-                f"{request.method} {path} returned HTTP {exc.code}: {excerpt}"
+                f"{request.get_method()} {path} returned HTTP {exc.code}: {excerpt}"
             ) from exc
         except urllib.error.URLError as exc:
             raise SmokeFailure(
@@ -131,7 +143,7 @@ class HttpClient:
             ) from exc
         except TimeoutError as exc:
             raise SmokeFailure(
-                f"{request.method} {path} exceeded the {self.timeout:g}s timeout"
+                f"{request.get_method()} {path} exceeded the {self.timeout:g}s timeout"
             ) from exc
 
     def get(self, path: str) -> Response:
@@ -249,6 +261,42 @@ def csrf_from_index(audit: Audit, client: HttpClient, body: str) -> str:
             "HTTPS service issued its CSRF cookie without Secure",
         )
     return token
+
+
+def check_urlencoded_form_budget(audit: Audit, client: HttpClient, csrf: str) -> None:
+    # Oversized synthetic requests belong only to the CI loopback service.
+    target = urllib.parse.urlsplit(client.base_url)
+    if target.scheme not in ("http", "https") or target.hostname not in (
+        "127.0.0.1",
+        "::1",
+    ):
+        print(
+            "[NOT RUN] oversized-form checks require a literal loopback service URL",
+            flush=True,
+        )
+        return
+    client.add_secret(csrf)
+    prefix = urllib.parse.urlencode({"csrf_token": csrf, "padding": ""}).encode("ascii")
+    body = prefix + b"x" * (500_001 - len(prefix))
+    audit.check(
+        len(body) == 500_001, "oversized form must contain exactly 500001 bytes"
+    )
+    bodies = (
+        ("known-length", body),
+        ("chunked", iter((body[:250_000], body[250_000:]))),
+    )
+    for framing, data in bodies:
+        response = client.request(
+            "/",
+            data=data,
+            method="POST",
+            expected_status=413,
+            headers={"Content-Type": "application/x-www-form-urlencoded"},
+        )
+        audit.check(
+            response.status == 413, f"{framing} oversized form did not return HTTP 413"
+        )
+    audit.stage("known-length and chunked oversized forms return HTTP 413")
 
 
 def generate_keypair(
@@ -436,6 +484,7 @@ def run(
     )
     csrf = csrf_from_index(audit, client, index_body)
     audit.stage("health, version, security headers, CSRF, and current UI")
+    check_urlencoded_form_budget(audit, client, csrf)
 
     hybrid_keys = generate_keypair(audit, client, csrf, "/keygen", "hybrid")
     pq_only_keys = generate_keypair(audit, client, csrf, "/keygen-pqonly", "PQ-only")

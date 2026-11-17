@@ -163,8 +163,38 @@ def csrf_prepare():
     if request.method in ("POST", "PUT", "DELETE"):
         if not cookie:
             abort(403)
+        # Bound URL-encoded bodies before parsing CSRF fields. File uploads
+        # retain their separate multipart limit.
+        if request.mimetype == "application/x-www-form-urlencoded":
+            form_limit = request.max_form_memory_size
+            if form_limit is not None:
+                upload_limit = request.max_content_length
+                request.max_content_length = (
+                    form_limit
+                    if upload_limit is None
+                    else min(form_limit, upload_limit)
+                )
+            body_limit = request.max_content_length
+            unknown_length = (
+                request.content_length is None
+                or request.environ.get("CONTENT_LENGTH") == ""
+            )
+            # A bounded read can stop before EOF. Reject a full buffer
+            # rather than parse a silently truncated form.
+            if (
+                body_limit is not None
+                and unknown_length
+                and len(request.get_data(cache=True)) >= body_limit
+            ):
+                abort(413)
         submitted = request.form.get("csrf_token", "")
-        if not submitted or not hmac.compare_digest(cookie, submitted):
+        # compare_digest accepts ASCII strings; malformed tokens stay a 403.
+        if (
+            not submitted
+            or not cookie.isascii()
+            or not submitted.isascii()
+            or not hmac.compare_digest(cookie, submitted)
+        ):
             abort(403)
 
 
